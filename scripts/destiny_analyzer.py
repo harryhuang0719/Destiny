@@ -259,6 +259,14 @@ async def call_llm(
     timeout: float | None = None,
 ) -> dict[str, Any]:
     """Call one selected provider and return auditable, key-free metadata."""
+    try:
+        request_timeout = float(
+            timeout if timeout is not None else os.getenv("DESTINY_LLM_TIMEOUT", "120")
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("LLM timeout 必须是 1-600 秒的有限数值") from exc
+    if not math.isfinite(request_timeout) or not 1 <= request_timeout <= 600:
+        raise ValueError("LLM timeout 必须是 1-600 秒的有限数值")
     if not HAS_HTTPX:
         return {
             "status": "error",
@@ -303,14 +311,6 @@ async def call_llm(
             "text": "[LLM配置错误] 没有任何已配置 provider。",
         }
 
-    try:
-        request_timeout = float(
-            timeout if timeout is not None else os.getenv("DESTINY_LLM_TIMEOUT", "120")
-        )
-    except (TypeError, ValueError) as exc:
-        raise ValueError("LLM timeout 必须是 1-600 秒的有限数值") from exc
-    if not math.isfinite(request_timeout) or not 1 <= request_timeout <= 600:
-        raise ValueError("LLM timeout 必须是 1-600 秒的有限数值")
     errors: list[str] = []
     async with httpx.AsyncClient(timeout=request_timeout, trust_env=False) as client:
         for name in order:

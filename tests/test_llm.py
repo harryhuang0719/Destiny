@@ -27,6 +27,8 @@ def test_custom_provider_requires_https(monkeypatch: pytest.MonkeyPatch) -> None
 def test_provider_failure_does_not_hop_without_explicit_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    if not destiny_analyzer.HAS_HTTPX:
+        pytest.skip("optional httpx adapter is not installed")
     monkeypatch.setenv("MINIMAX_API_KEY", "minimax-test")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-test")
     calls: list[str] = []
