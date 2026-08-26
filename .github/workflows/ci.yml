@@ -99,7 +99,8 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.11.14"
-      - run: python scripts/bootstrap.py --research --dev --installer uv --skip-node
+      - name: Install only the frozen Horizons test dependencies
+        run: uv sync --frozen --extra research --extra dev --no-default-groups
       - name: Download and verify the pinned official DE440s kernel
         shell: bash
         env:

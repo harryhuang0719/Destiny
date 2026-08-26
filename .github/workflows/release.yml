@@ -239,6 +239,11 @@ jobs:
           DESTINY_TEST_AT="1969-07-28T12:00:00Z" \
           uv run --frozen --all-extras python -m pytest -q tests/test_historical_skyfield.py
 
+      - name: Install an isolated frozen Horizons test environment
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/destiny-horizons-venv
+        run: uv sync --frozen --extra research --extra dev --no-default-groups
+
       - name: Download and verify the pinned official DE440s kernel
         shell: bash
         env:
@@ -280,7 +285,9 @@ jobs:
           echo "DESTINY_TEST_DE440S=$kernel_path" >> "$GITHUB_ENV"
 
       - name: Compare DE440s with the frozen JPL Horizons observations
-        run: uv run --frozen --all-extras python -m pytest -q tests/test_historical_horizons.py
+        run: |
+          "$RUNNER_TEMP/destiny-horizons-venv/bin/python" \
+            -m pytest -q tests/test_historical_horizons.py
 
       - name: Audit the frozen production dependency set
         shell: bash
