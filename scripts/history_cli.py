@@ -9,7 +9,7 @@ import math
 import sys
 from pathlib import Path
 
-try:  # package install
+if __package__:  # package install
     from .historical_research import (
         ASPECTS,
         ASTRO_SCHEMA_VERSION,
@@ -30,7 +30,7 @@ try:  # package install
         sha256_file,
         write_feature_csv,
     )
-except ImportError:  # direct scripts/history_cli.py execution
+else:  # direct scripts/history_cli.py execution
     from historical_research import (
         ASPECTS,
         ASTRO_SCHEMA_VERSION,

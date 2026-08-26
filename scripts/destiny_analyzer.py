@@ -576,9 +576,9 @@ async def main(argv: list[str] | None = None) -> int:
 
     command = argv[0]
     if command == "history":
-        try:
+        if __package__:
             from .history_cli import main as history_main
-        except ImportError:
+        else:
             from history_cli import main as history_main
 
         return history_main(argv[1:])
