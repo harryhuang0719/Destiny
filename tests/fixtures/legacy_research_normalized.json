@@ -1,0 +1,184 @@
+{
+  "alignment": {
+    "actual_overlapping_targets": false,
+    "dropped_rows": 0,
+    "joined_rows": 70,
+    "max_feature_staleness_hours": 24,
+    "method": "backward as-of only"
+  },
+  "claim_boundary": "Univariate association MVP only; no causal or incremental-information claim, no proof of astrology, and no investment advice.",
+  "evidence_status": "PSEUDO_OOS_ONLY",
+  "feature_manifest": {
+    "body_targets": {},
+    "coordinate_profile": "portable-integer-fixture",
+    "feature_file_sha256": "8083f4681eb3881edec9960277e17a24c15c72c797197aef9b47763e92ec4482",
+    "frame": {},
+    "pre_utc_policy": "strict",
+    "schema_version": "portable-v1",
+    "source_type": "synthetic_fixture"
+  },
+  "features": [
+    {
+      "direction": "positive",
+      "direction_matches_manifest": true,
+      "direction_stable": true,
+      "effective_period_days": null,
+      "evidence_status": "DESCRIPTIVE",
+      "name": "signal",
+      "placebo": {
+        "alternative": "positive",
+        "bh_q": 0.09523809523809523,
+        "effective_unique_shifts": 21,
+        "empirical_p": 0.047619047619047616,
+        "familywise_maxT_p": 0.047619047619047616,
+        "finite_group_size": 21,
+        "method": "joint circular time-shift of preregistered feature rows",
+        "requested_runs": 99
+      },
+      "strategy": null,
+      "test": {
+        "n": 21,
+        "pearson": 0.9097103398609198,
+        "spearman": 0.9057831671712564
+      },
+      "train": {
+        "n": 25,
+        "pearson": 0.9135535993752687,
+        "spearman": 0.9189297538886738
+      },
+      "validation": {
+        "n": 24,
+        "pearson": 0.9056249946004401,
+        "spearman": 0.8998697359675883
+      }
+    },
+    {
+      "direction": "two-sided",
+      "direction_matches_manifest": true,
+      "direction_stable": true,
+      "effective_period_days": null,
+      "evidence_status": "DESCRIPTIVE",
+      "name": "noise",
+      "placebo": {
+        "alternative": "two-sided",
+        "bh_q": 0.2857142857142857,
+        "effective_unique_shifts": 21,
+        "empirical_p": 0.2857142857142857,
+        "familywise_maxT_p": 0.42857142857142855,
+        "finite_group_size": 21,
+        "method": "joint circular time-shift of preregistered feature rows",
+        "requested_runs": 99
+      },
+      "strategy": null,
+      "test": {
+        "n": 21,
+        "pearson": 0.27768369888880123,
+        "spearman": 0.28023430716129877
+      },
+      "train": {
+        "n": 25,
+        "pearson": 0.4318132514773794,
+        "spearman": 0.3968410466142151
+      },
+      "validation": {
+        "n": 24,
+        "pearson": 0.38332506654802123,
+        "spearman": 0.37412923922802704
+      }
+    }
+  ],
+  "hypothesis": {
+    "embargo_hours": 0,
+    "features": [
+      {
+        "direction": "positive",
+        "name": "signal"
+      },
+      {
+        "direction": "two-sided",
+        "name": "noise"
+      }
+    ],
+    "hypothesis_id": "portable-legacy-v1",
+    "max_feature_staleness_hours": 24,
+    "mode": "pseudo_oos",
+    "placebo_runs": 99,
+    "registered_at_utc": "2020-01-01T00:00:00Z",
+    "registered_commit": "fixture",
+    "seed": 314159,
+    "train_end_utc": "2021-01-25T23:59:59Z",
+    "validation_end_utc": "2021-02-18T23:59:59Z"
+  },
+  "limitations": [
+    "Retrospective data already inspected cannot become a sealed OOS sample.",
+    "Time-shift placebo is one null family, not a full phase-randomized pipeline universe.",
+    "No strategy metric is emitted for indicators, non-return targets, or overlapping targets.",
+    "Market data and target construction are BYOD and must be independently audited.",
+    "This MVP tests marginal univariate association; financial controls and paired M0-vs-M2 incremental tests are not implemented."
+  ],
+  "point_in_time_invariant": "observation <= available <= decision < execution <= target_start < target_end",
+  "provenance": {
+    "input_paths": {
+      "catalog_json": "<FIXTURE_DIR>/catalog.json",
+      "feature_csv": "<FIXTURE_DIR>/features.csv",
+      "feature_manifest_json": "<FIXTURE_DIR>/features.csv.manifest.json",
+      "hypothesis_json": "<FIXTURE_DIR>/hypothesis.json",
+      "target_csv": "<FIXTURE_DIR>/targets.csv"
+    },
+    "input_sha256": {
+      "catalog_json": "7bde61d2b93ea7337c600146e82e342145ffa4a3a00107f965799dd792aea128",
+      "feature_csv": "8083f4681eb3881edec9960277e17a24c15c72c797197aef9b47763e92ec4482",
+      "feature_manifest_json": "9b47c56eb893f7462e7d3711fca1be8b0503279f607caf01a95b43be10ca99f2",
+      "hypothesis_json": "5f2771338c09292879e7fb52e10c13b2821bebc65dd2f5f6393a720243837a4c",
+      "target_csv": "3a446a70182c9ed55cda48ec8733fcc04e0a2cb19c2a4a4ee8f4b08f79f20f9e"
+    },
+    "pre_utc_policy": "reject",
+    "trial": {
+      "accessed_at_utc": "<RUNTIME_TIMESTAMP_UTC>",
+      "code": {
+        "commit": "<GIT_COMMIT>",
+        "dirty": "<GIT_DIRTY>",
+        "source_sha256": "<SOURCE_SHA256>"
+      },
+      "hypothesis_id": "portable-legacy-v1",
+      "input_sha256": {
+        "catalog_json": "7bde61d2b93ea7337c600146e82e342145ffa4a3a00107f965799dd792aea128",
+        "feature_csv": "8083f4681eb3881edec9960277e17a24c15c72c797197aef9b47763e92ec4482",
+        "feature_manifest_json": "9b47c56eb893f7462e7d3711fca1be8b0503279f607caf01a95b43be10ca99f2",
+        "hypothesis_json": "5f2771338c09292879e7fb52e10c13b2821bebc65dd2f5f6393a720243837a4c",
+        "target_csv": "3a446a70182c9ed55cda48ec8733fcc04e0a2cb19c2a4a4ee8f4b08f79f20f9e"
+      },
+      "mode": "pseudo_oos",
+      "trial_id": "<TRIAL_ID>"
+    },
+    "trial_events": [
+      "STARTED",
+      "COMPLETED"
+    ],
+    "trial_registry": "<FIXTURE_DIR>/trials.ndjson"
+  },
+  "schema_version": "1.0.0",
+  "series_catalog": {
+    "calendar": "daily-v1",
+    "currency": "USD",
+    "exchange_timezone": "UTC",
+    "instrument_type": "synthetic",
+    "methodology_version": "v1",
+    "overlapping_targets": false,
+    "periods_per_year": 252,
+    "price_type": "synthetic",
+    "series_id": "PORTABLE-LEGACY",
+    "source": "deterministic-integer-generation",
+    "source_vintage": "v1",
+    "target_column": "target",
+    "target_kind": "continuous_numeric",
+    "tradable": false,
+    "vendor": "tracked-test-fixture",
+    "venue": "TEST"
+  },
+  "splits": {
+    "test": 21,
+    "train": 25,
+    "validation": 24
+  }
+}

@@ -30,6 +30,7 @@ if __package__:  # package install
         sha256_file,
         write_feature_csv,
     )
+    from .research_contracts import _load_json_object, incremental_model_enabled
 else:  # direct scripts/history_cli.py execution
     from historical_research import (
         ASPECTS,
@@ -51,6 +52,7 @@ else:  # direct scripts/history_cli.py execution
         sha256_file,
         write_feature_csv,
     )
+    from research_contracts import _load_json_object, incremental_model_enabled
 
 
 def _csv_items(value: str) -> tuple[str, ...]:
@@ -142,10 +144,24 @@ def build_parser() -> argparse.ArgumentParser:
     research.add_argument("--targets", required=True, help="point-in-time target CSV")
     research.add_argument("--catalog", required=True, help="series catalog JSON")
     research.add_argument("--hypothesis", required=True, help="预注册 hypothesis JSON")
+    research.add_argument(
+        "--controls",
+        help="long-form point-in-time controls CSV；incremental 模式必填",
+    )
+    research.add_argument(
+        "--controls-catalog",
+        help="controls catalog JSON；incremental 模式必填",
+    )
     research.add_argument("--trial-registry", required=True, help="append-only NDJSON registry")
     research.add_argument("--out", required=True)
     research.add_argument("--overwrite", action="store_true")
     return parser
+
+
+def _validate_control_option_pair(controls: str | None, controls_catalog: str | None) -> bool:
+    if (controls is None) != (controls_catalog is None):
+        raise ResearchError("--controls 与 --controls-catalog 必须同时提供")
+    return controls is not None
 
 
 def _write_result(path: str, data: dict, overwrite: bool) -> None:
@@ -269,16 +285,37 @@ def main(argv: list[str] | None = None) -> int:
             feature_manifest = args.feature_manifest or f"{args.features}.manifest.json"
             result_output = safe_output_path(args.out, "result output")
             registry_output = safe_output_path(args.trial_registry, "trial registry")
-            ensure_distinct_paths(
+            controls_supplied = _validate_control_option_pair(args.controls, args.controls_catalog)
+            hypothesis = _load_json_object(args.hypothesis, "hypothesis manifest")
+            incremental_enabled = incremental_model_enabled(hypothesis)
+            if incremental_enabled and not controls_supplied:
+                raise ResearchError(
+                    "incremental_model 启用时必须提供 --controls 与 --controls-catalog"
+                )
+            if controls_supplied and not incremental_enabled:
+                raise ResearchError(
+                    "incremental_model 未启用时禁止提供 --controls/--controls-catalog"
+                )
+            distinct_paths = {
+                "features": args.features,
+                "feature_manifest": feature_manifest,
+                "targets": args.targets,
+                "catalog": args.catalog,
+                "hypothesis": args.hypothesis,
+                "trial_registry": registry_output,
+                "result_output": result_output,
+            }
+            if controls_supplied:
+                distinct_paths["controls"] = args.controls
+                distinct_paths["controls_catalog"] = args.controls_catalog
+            ensure_distinct_paths(distinct_paths)
+            incremental_kwargs = (
                 {
-                    "features": args.features,
-                    "feature_manifest": feature_manifest,
-                    "targets": args.targets,
-                    "catalog": args.catalog,
-                    "hypothesis": args.hypothesis,
-                    "trial_registry": registry_output,
-                    "result_output": result_output,
+                    "controls_csv": args.controls,
+                    "controls_catalog_json": args.controls_catalog,
                 }
+                if controls_supplied
+                else {}
             )
             result = run_point_in_time_research(
                 args.features,
@@ -287,6 +324,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.hypothesis,
                 registry_output,
                 feature_manifest,
+                **incremental_kwargs,
             )
             _write_result(str(result_output), result, args.overwrite)
             print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
