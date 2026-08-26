@@ -1,0 +1,21 @@
+include SKILL.md
+include AGENTS.md
+include CLAUDE.md
+include LICENSE
+include SECURITY.md
+include CONTRIBUTING.md
+include THIRD_PARTY_NOTICES.md
+include .env.example
+include package.json
+include package-lock.json
+include pyproject.toml
+include uv.lock
+include requirements*.txt
+include destiny
+include destiny.cmd
+include destiny.ps1
+recursive-include scripts *.py *.cjs
+recursive-include references *.md
+recursive-include agents *.yaml
+recursive-include examples *.md *.json *.csv
+recursive-include docs *.md

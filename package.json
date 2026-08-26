@@ -1,0 +1,24 @@
+{
+  "name": "destiny-ziwei-runtime",
+  "version": "2.0.0",
+  "description": "Pinned iztro runtime for the Destiny agent skill",
+  "private": true,
+  "scripts": {
+    "test": "node -e \"require('iztro'); console.log('iztro runtime ok')\"",
+    "audit:prod": "npm audit --omit=dev"
+  },
+  "keywords": [
+    "ziwei",
+    "destiny",
+    "agent-skill"
+  ],
+  "author": "Harry Huang",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "iztro": "2.5.8"
+  }
+}

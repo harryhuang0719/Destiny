@@ -1,0 +1,28 @@
+{
+  "hypothesis_id": "sun-cycle-example-v1",
+  "registered_at_utc": "REPLACE-WITH-REGISTRATION-TIMESTAMP",
+  "registered_commit": "REPLACE-WITH-GIT-COMMIT",
+  "mode": "pseudo_oos",
+  "pre_utc_policy": "reject",
+  "features": [
+    {
+      "name": "sun_longitude_sin",
+      "direction": "two-sided",
+      "effective_period_days": 365.2422
+    },
+    {
+      "name": "sun_longitude_cos",
+      "direction": "two-sided",
+      "effective_period_days": 365.2422
+    }
+  ],
+  "train_end_utc": "1999-12-31T23:59:59Z",
+  "validation_end_utc": "2014-12-31T23:59:59Z",
+  "embargo_hours": 120,
+  "max_feature_staleness_hours": 24,
+  "placebo_runs": 1000,
+  "seed": 20260826,
+  "cost_bps": 0,
+  "primary_metric": "test_pearson_ic",
+  "correction_family": "all features listed in this manifest"
+}

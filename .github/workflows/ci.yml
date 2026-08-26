@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} · Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.10"
+          - os: ubuntu-latest
+            python: "3.12"
+          - os: ubuntu-latest
+            python: "3.14"
+          - os: macos-latest
+            python: "3.12"
+          - os: windows-latest
+            python: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Bootstrap and run offline tests
+        run: python scripts/bootstrap.py --llm --research --dev
+      - name: Audit production Node dependencies
+        run: npm audit --omit=dev
+      - name: Smoke Windows launchers
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\destiny.ps1 doctor --json | Out-Null
+          cmd /c "destiny.cmd doctor --json > NUL"
+
+  jpl-spk-smoke:
+    name: Real JPL SPK excerpt smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: python scripts/bootstrap.py --research --dev
+      - name: Run against Skyfield's real DE441 excerpt fixture
+        shell: bash
+        run: |
+          kernel_path=$(.venv/bin/python -c "from pathlib import Path; import skyfield; print(Path(skyfield.__file__).parent / 'tests/data/de441-1969.bsp')")
+          DESTINY_TEST_KERNEL="$kernel_path" \
+          DESTINY_TEST_AT="1969-07-28T12:00:00Z" \
+          .venv/bin/python -m pytest -q tests/test_historical_skyfield.py
+
+  repository-hygiene:
+    name: Public repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.14"
+      - name: Verify Python lock is current
+        run: uv lock --check
+      - name: Reject forbidden tracked artifacts and common secret patterns
+        run: |
+          python3 - <<'PY'
+          import re
+          import subprocess
+          from pathlib import Path
+
+          tracked = subprocess.check_output(["git", "ls-files"], text=True).splitlines()
+          forbidden_parts = {
+              "node_modules", "__pycache__", ".venv", ".pytest_cache", ".ruff_cache",
+              "data", "results", "reports",
+          }
+          forbidden_suffixes = {
+              ".pyc", ".bsp", ".bpc", ".parquet", ".duckdb", ".sqlite",
+              ".sqlite3", ".pdf", ".pem", ".key",
+          }
+          forbidden_names = {".env", "trials.ndjson"}
+          bad = []
+          suspicious_content = re.compile(
+              rb"(gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}|"
+              rb"AKIA[0-9A-Z]{16}|BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY)"
+          )
+          for path in tracked:
+              parts = set(path.split("/"))
+              name = path.rsplit("/", 1)[-1]
+              suffix = "." + name.rsplit(".", 1)[-1] if "." in name else ""
+              if parts & forbidden_parts or suffix in forbidden_suffixes or name in forbidden_names:
+                  bad.append(path)
+                  continue
+              file_path = Path(path)
+              if file_path.stat().st_size > 5 * 1024 * 1024:
+                  bad.append(path + " (tracked file >5 MiB)")
+                  continue
+              if suspicious_content.search(file_path.read_bytes()):
+                  bad.append(path + " (possible secret)")
+          if bad:
+              raise SystemExit("Forbidden tracked artifacts:\n" + "\n".join(bad))
+          print(f"Tracked-file hygiene OK: {len(tracked)} files")
+          PY
+      - name: Compile every Python source
+        run: python3 -m compileall -q scripts tests
+
+  wheel-smoke:
+    name: Build and install Python artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build==1.5.0 twine==7.0.0
+      - run: python -m build
+      - run: python -m twine check dist/*
+      - name: Clean wheel smoke (core and history command)
+        shell: bash
+        run: |
+          python -m venv /tmp/destiny-wheel
+          /tmp/destiny-wheel/bin/python -m pip install dist/*.whl
+          /tmp/destiny-wheel/bin/destiny calendar 2026 8 26 --json > /tmp/calendar.json
+          /tmp/destiny-wheel/bin/destiny history --help > /tmp/history-help.txt
+          /tmp/destiny-wheel/bin/python -m json.tool /tmp/calendar.json > /dev/null

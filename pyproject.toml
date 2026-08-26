@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "destiny-agent-skill"
+version = "2.0.0"
+description = "Offline-first Chinese destiny engines and auditable historical astronomy research"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Harry Huang" }]
+dependencies = [
+  "lunar-python==1.4.8",
+  "tzdata==2026.3",
+]
+
+[project.optional-dependencies]
+llm = ["httpx==0.28.1"]
+research = ["skyfield==1.55"]
+dev = ["pytest==9.1.1", "ruff==0.16.4"]
+all = ["httpx==0.28.1", "skyfield==1.55"]
+
+[project.urls]
+Homepage = "https://github.com/harryhuang0719/Destiny"
+Repository = "https://github.com/harryhuang0719/Destiny.git"
+Issues = "https://github.com/harryhuang0719/Destiny/issues"
+
+[project.scripts]
+destiny = "destiny.destiny_analyzer:cli"
+
+[tool.setuptools]
+packages = ["destiny"]
+package-dir = { destiny = "scripts" }
+
+[tool.setuptools.package-data]
+destiny = ["*.cjs"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["scripts"]
+markers = [
+  "integration: requires Node and the pinned npm dependencies",
+  "research: requires the optional Skyfield dependency and/or JPL fixture",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+  "E501",
+  "B904",
+  "E741",
+  "RUF001",
+  "RUF002",
+  "RUF003",
+  "UP036"
+]

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Destiny"
+  short_description: "Offline destiny charts and auditable astro research"
+  default_prompt: "Use $destiny to calculate locally first, then explain the result with clear conventions and limitations."
+
+policy:
+  allow_implicit_invocation: true

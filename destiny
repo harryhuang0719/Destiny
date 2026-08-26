@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DESTINY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -x "$DESTINY_ROOT/.venv/bin/python" ]]; then
+  DESTINY_PYTHON="$DESTINY_ROOT/.venv/bin/python"
+else
+  DESTINY_PYTHON="${PYTHON:-python3}"
+fi
+exec "$DESTINY_PYTHON" "$DESTINY_ROOT/scripts/destiny_analyzer.py" "$@"

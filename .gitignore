@@ -1,0 +1,44 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# External data and generated research artifacts
+data/
+results/
+output/
+reports/
+trials.ndjson
+*.bsp
+*.bpc
+*.parquet
+*.duckdb
+*.sqlite
+*.sqlite3
+*.pdf
+
+# Local agent/audit artifacts
+graphify-out/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp

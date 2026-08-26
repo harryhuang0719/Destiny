@@ -1,0 +1,20 @@
+{
+  "series_id": "REPLACE-WITH-EXACT-SERIES-ID",
+  "vendor": "REPLACE-WITH-VENDOR",
+  "source": "REPLACE-WITH-SOURCE-URL-OR-DATASET-ID",
+  "source_vintage": "REPLACE-WITH-SNAPSHOT-TIMESTAMP-OR-VERSION",
+  "instrument_type": "total_return_index_or_tradable_instrument_or_indicator",
+  "currency": "USD",
+  "venue": "REPLACE-WITH-VENUE",
+  "exchange_timezone": "America/New_York",
+  "calendar": "REPLACE-WITH-VERSIONED-CALENDAR-ID",
+  "price_type": "REPLACE-WITH-TOTAL-RETURN-OR-RAW-EXECUTION-PRICE-SEMANTICS",
+  "target_kind": "simple_return",
+  "target_column": "target",
+  "tradable": false,
+  "methodology_version": "v1",
+  "periods_per_year": 252,
+  "overlapping_targets": false,
+  "license_tag": "REPLACE-WITH-DATA-LICENSE-OR-CONTRACT-TAG",
+  "notes": "Indicators such as VIX or yields must remain tradable=false."
+}
