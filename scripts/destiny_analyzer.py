@@ -8,24 +8,32 @@ only after the caller explicitly supplies ``--llm`` and a provider.
 from __future__ import annotations
 
 import asyncio
-import importlib.metadata
 import json
-import math
-import os
 import random
 import secrets
-import shutil
-import subprocess
 import sys
 from datetime import datetime
-from functools import lru_cache
-from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 try:  # package install
     from .bazi_engine import format_bazi_text, generate_bazi
     from .calendar_engine import get_jie_qi_around, lunar_to_solar, solar_to_lunar_info
+    from .cli_support import (
+        MAX_ENV_FILE_BYTES,
+        MAX_QUESTION_CHARS,
+        CliError,
+        _apply_solar,
+        _default_flags,
+        _gender_int,
+        _gender_text,
+        _ints,
+        _location_flags,
+        _parse_global_flags,
+        _read_question,
+        _validate_birth,
+        configure_utf8_stdio,
+        load_env_file,
+    )
     from .iching_engine import (
         format_iching_text,
         interpret,
@@ -33,20 +41,52 @@ try:  # package install
         qigua_manual,
         qigua_time,
     )
+    from .llm_provider import (
+        ALLOWED_ENV_KEYS,
+        HAS_HTTPX,
+        _extract_minimax,
+        _extract_openai_compatible,
+        _provider_configs,
+        _validated_https_url,
+        call_llm,
+        httpx,
+    )
+    from .output_support import (
+        DISCLAIMER,
+        ROOT_DIR,
+        SCHEMA_VERSION,
+        SCRIPT_DIR,
+        _print_result,
+        base_result,
+        doctor_report,
+        engine_versions,
+        print_help,
+    )
     from .timezone_util import (
         get_longitude,
         get_timezone_name,
-        has_city,
         list_cities,
-        resolve_utc_offset,
-        true_solar_time,
-        tzdata_version,
-        validate_datetime,
     )
     from .ziwei_engine import format_ziwei_text, generate_ziwei
 except ImportError:  # direct scripts/destiny_analyzer.py execution
     from bazi_engine import format_bazi_text, generate_bazi
     from calendar_engine import get_jie_qi_around, lunar_to_solar, solar_to_lunar_info
+    from cli_support import (
+        MAX_ENV_FILE_BYTES,
+        MAX_QUESTION_CHARS,
+        CliError,
+        _apply_solar,
+        _default_flags,
+        _gender_int,
+        _gender_text,
+        _ints,
+        _location_flags,
+        _parse_global_flags,
+        _read_question,
+        _validate_birth,
+        configure_utf8_stdio,
+        load_env_file,
+    )
     from iching_engine import (
         format_iching_text,
         interpret,
@@ -54,294 +94,69 @@ except ImportError:  # direct scripts/destiny_analyzer.py execution
         qigua_manual,
         qigua_time,
     )
+    from llm_provider import (
+        ALLOWED_ENV_KEYS,
+        HAS_HTTPX,
+        _extract_minimax,
+        _extract_openai_compatible,
+        _provider_configs,
+        _validated_https_url,
+        call_llm,
+        httpx,
+    )
+    from output_support import (
+        DISCLAIMER,
+        ROOT_DIR,
+        SCHEMA_VERSION,
+        SCRIPT_DIR,
+        _print_result,
+        base_result,
+        doctor_report,
+        engine_versions,
+        print_help,
+    )
     from timezone_util import (
         get_longitude,
         get_timezone_name,
-        has_city,
         list_cities,
-        resolve_utc_offset,
-        true_solar_time,
-        tzdata_version,
-        validate_datetime,
     )
     from ziwei_engine import format_ziwei_text, generate_ziwei
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-ROOT_DIR = SCRIPT_DIR.parent
 
-try:
-    import httpx
-
-    HAS_HTTPX = True
-except ImportError:  # pragma: no cover - covered in clean-room doctor checks
-    httpx = None
-    HAS_HTTPX = False
-
-
-SCHEMA_VERSION = "2.0.0"
-DISCLAIMER = "传统文化与娱乐参考；不构成医疗、法律、投资或重大人生决策建议。"
-ALLOWED_ENV_KEYS = {
-    "MINIMAX_API_KEY",
-    "MINIMAX_API_URL",
-    "MINIMAX_MODEL",
-    "DEEPSEEK_API_KEY",
-    "DEEPSEEK_API_URL",
-    "DEEPSEEK_MODEL",
-    "CUSTOM_API_KEY",
-    "CUSTOM_API_BASE",
-    "CUSTOM_MODEL",
-    "DESTINY_LLM_TIMEOUT",
-}
-MAX_ENV_FILE_BYTES = 1024 * 1024
-MAX_QUESTION_CHARS = 20_000
-
-
-class CliError(ValueError):
-    """A user-facing CLI error that should not produce a traceback."""
-
-
-def configure_utf8_stdio() -> None:
-    """Make JSON and stdin text portable across Windows and redirected pipes."""
-    for stream_name in ("stdin", "stdout", "stderr"):
-        stream = getattr(sys, stream_name)
-        reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is not None:
-            reconfigure(encoding="utf-8", errors="strict")
-
-
-def load_env_file(path: str | Path) -> list[str]:
-    """Load only known Destiny keys from an explicitly requested dotenv file."""
-    env_path = Path(path).expanduser()
-    try:
-        if not env_path.is_file():
-            raise CliError(f"环境变量文件不存在: {env_path}")
-        if env_path.stat().st_size > MAX_ENV_FILE_BYTES:
-            raise CliError(f"环境变量文件超过 {MAX_ENV_FILE_BYTES:,} bytes 安全上限")
-        env_text = env_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as exc:
-        raise CliError(f"无法读取环境变量文件 {env_path}: {exc}") from exc
-
-    loaded: list[str] = []
-    for number, raw_line in enumerate(env_text.splitlines(), 1):
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("export "):
-            line = line[7:].lstrip()
-        if "=" not in line:
-            raise CliError(f"{env_path}:{number} 不是 KEY=VALUE 格式")
-        key, value = line.split("=", 1)
-        key = key.strip()
-        if key not in ALLOWED_ENV_KEYS:
-            continue
-        os.environ.setdefault(key, value.strip().strip("'\""))
-        loaded.append(key)
-    return loaded
-
-
-def _extract_minimax(data: dict[str, Any]) -> str:
-    return "\n".join(
-        block.get("text", "").strip()
-        for block in data.get("content", [])
-        if block.get("type") == "text" and block.get("text")
-    ).strip()
-
-
-def _extract_openai_compatible(data: dict[str, Any]) -> str:
-    choices = data.get("choices") or []
-    if not choices:
-        return ""
-    message = choices[0].get("message") or {}
-    # Do not expose a provider's hidden reasoning when final content is empty.
-    return (message.get("content") or "").strip()
-
-
-def _validated_https_url(url: str, provider: str, allowed_hosts: set[str] | None = None) -> str:
-    parsed = urlparse(url)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
-        raise ValueError(f"{provider} endpoint 必须是无内嵌凭据的 HTTPS URL")
-    if allowed_hosts is not None and parsed.hostname.lower() not in allowed_hosts:
-        raise ValueError(f"{provider} endpoint host 不受信任: {parsed.hostname}")
-    return url
-
-
-def _provider_configs(system_prompt: str, user_message: str) -> dict[str, dict[str, Any]]:
-    configs: dict[str, dict[str, Any]] = {}
-
-    minimax_key = os.getenv("MINIMAX_API_KEY")
-    if minimax_key:
-        model = os.getenv("MINIMAX_MODEL", "MiniMax-M2.7")
-        url = _validated_https_url(
-            os.getenv("MINIMAX_API_URL", "https://api.minimax.io/anthropic/v1/messages"),
-            "minimax",
-            {"api.minimax.io"},
-        )
-        configs["minimax"] = {
-            "url": url,
-            "headers": {
-                "x-api-key": minimax_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            "payload": {
-                "model": model,
-                "max_tokens": 4000,
-                "system": system_prompt,
-                "messages": [{"role": "user", "content": user_message}],
-                "temperature": 1.0,
-            },
-            "extract": _extract_minimax,
-            "model": model,
-        }
-
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
-    if deepseek_key:
-        model = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-pro")
-        url = _validated_https_url(
-            os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions"),
-            "deepseek",
-            {"api.deepseek.com"},
-        )
-        configs["deepseek"] = {
-            "url": url,
-            "headers": {
-                "authorization": f"Bearer {deepseek_key}",
-                "content-type": "application/json",
-            },
-            "payload": {
-                "model": model,
-                "max_tokens": 4000,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
-                ],
-                "temperature": 0.7,
-            },
-            "extract": _extract_openai_compatible,
-            "model": model,
-        }
-
-    custom_key = os.getenv("CUSTOM_API_KEY")
-    custom_base = os.getenv("CUSTOM_API_BASE")
-    if custom_key and custom_base:
-        model = os.getenv("CUSTOM_MODEL")
-        if not model:
-            raise ValueError("custom provider 必须显式设置 CUSTOM_MODEL")
-        base = _validated_https_url(custom_base.rstrip("/"), "custom")
-        url = base if base.endswith("/chat/completions") else f"{base}/chat/completions"
-        configs["custom"] = {
-            "url": url,
-            "headers": {
-                "authorization": f"Bearer {custom_key}",
-                "content-type": "application/json",
-            },
-            "payload": {
-                "model": model,
-                "max_tokens": 4000,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
-                ],
-                "temperature": 0.7,
-            },
-            "extract": _extract_openai_compatible,
-            "model": model,
-        }
-    return configs
-
-
-async def call_llm(
-    system_prompt: str,
-    user_message: str,
-    *,
-    provider: str | None = None,
-    allow_fallback: bool = False,
-    timeout: float | None = None,
-) -> dict[str, Any]:
-    """Call one selected provider and return auditable, key-free metadata."""
-    try:
-        request_timeout = float(
-            timeout if timeout is not None else os.getenv("DESTINY_LLM_TIMEOUT", "120")
-        )
-    except (TypeError, ValueError) as exc:
-        raise ValueError("LLM timeout 必须是 1-600 秒的有限数值") from exc
-    if not math.isfinite(request_timeout) or not 1 <= request_timeout <= 600:
-        raise ValueError("LLM timeout 必须是 1-600 秒的有限数值")
-    if not HAS_HTTPX:
-        return {
-            "status": "error",
-            "provider": provider,
-            "model": None,
-            "text": "[LLM不可用] 未安装 httpx；请重新运行 bootstrap。",
-        }
-
-    configs = _provider_configs(system_prompt, user_message)
-    requested = provider or os.getenv("DESTINY_LLM_PROVIDER")
-    if not requested:
-        return {
-            "status": "error",
-            "provider": None,
-            "model": None,
-            "text": "[LLM未启用] 请同时使用 --llm --provider minimax|deepseek|custom。",
-        }
-    if requested not in ("minimax", "deepseek", "custom"):
-        return {
-            "status": "error",
-            "provider": requested,
-            "model": None,
-            "text": f"[LLM配置错误] 未知 provider: {requested}",
-        }
-    if requested not in configs and not allow_fallback:
-        return {
-            "status": "error",
-            "provider": requested,
-            "model": None,
-            "text": f"[LLM配置错误] {requested} 缺少 API key 或 endpoint。",
-        }
-
-    order = [requested]
-    if allow_fallback:
-        order.extend(name for name in ("minimax", "deepseek", "custom") if name != requested)
-    order = [name for name in order if name in configs]
-    if not order:
-        return {
-            "status": "error",
-            "provider": requested,
-            "model": None,
-            "text": "[LLM配置错误] 没有任何已配置 provider。",
-        }
-
-    errors: list[str] = []
-    async with httpx.AsyncClient(timeout=request_timeout, trust_env=False) as client:
-        for name in order:
-            cfg = configs[name]
-            try:
-                response = await client.post(
-                    cfg["url"], headers=cfg["headers"], json=cfg["payload"]
-                )
-                response.raise_for_status()
-                text = cfg["extract"](response.json())
-                if not text:
-                    raise ValueError("empty text response")
-                return {
-                    "status": "ok",
-                    "provider": name,
-                    "model": cfg["model"],
-                    "text": text,
-                }
-            except Exception as exc:  # never include response bodies or headers
-                if HAS_HTTPX and isinstance(exc, httpx.HTTPStatusError):
-                    detail = f"HTTP {exc.response.status_code}"
-                else:
-                    detail = f"{type(exc).__name__}: {exc}"
-                errors.append(f"{name}: {detail}")
-
-    return {
-        "status": "error",
-        "provider": order[-1],
-        "model": configs[order[-1]]["model"],
-        "text": f"[LLM解读失败] {'; '.join(errors)}",
-    }
+# Compatibility facade: these names were historically imported from this module.
+__all__ = [
+    "ALLOWED_ENV_KEYS",
+    "DISCLAIMER",
+    "HAS_HTTPX",
+    "MAX_ENV_FILE_BYTES",
+    "MAX_QUESTION_CHARS",
+    "ROOT_DIR",
+    "SCHEMA_VERSION",
+    "SCRIPT_DIR",
+    "CliError",
+    "_default_flags",
+    "_extract_minimax",
+    "_extract_openai_compatible",
+    "_provider_configs",
+    "_validated_https_url",
+    "analyze_bazi",
+    "analyze_comprehensive",
+    "analyze_hepan",
+    "analyze_iching",
+    "analyze_liunian",
+    "analyze_zeji",
+    "analyze_ziwei",
+    "base_result",
+    "call_llm",
+    "cli",
+    "configure_utf8_stdio",
+    "doctor_report",
+    "engine_versions",
+    "httpx",
+    "load_env_file",
+    "main",
+    "print_help",
+]
 
 
 SAFETY_PROMPT = """
@@ -385,38 +200,6 @@ ZEJI_SYSTEM_PROMPT = (
 宜忌与干支等传统依据；不得把结果描述成成功保证。"""
     + SAFETY_PROMPT
 )
-
-
-@lru_cache(maxsize=1)
-def engine_versions() -> dict[str, str | None]:
-    def version(name: str) -> str | None:
-        try:
-            return importlib.metadata.version(name)
-        except importlib.metadata.PackageNotFoundError:
-            return None
-
-    iztro_version = None
-    try:
-        lock = json.loads((ROOT_DIR / "package-lock.json").read_text(encoding="utf-8"))
-        iztro_version = lock["packages"]["node_modules/iztro"]["version"]
-    except (OSError, KeyError, json.JSONDecodeError):
-        pass
-    return {
-        "destiny_schema": SCHEMA_VERSION,
-        "lunar_python": version("lunar_python"),
-        "tzdata": version("tzdata"),
-        "httpx": version("httpx"),
-        "iztro": iztro_version,
-    }
-
-
-def base_result(kind: str) -> dict[str, Any]:
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "type": kind,
-        "engine_versions": engine_versions(),
-        "disclaimer": DISCLAIMER,
-    }
 
 
 def _attach_llm(result: dict[str, Any], llm_result: dict[str, Any]) -> None:
@@ -773,407 +556,9 @@ async def analyze_zeji(
     return result
 
 
-def print_help() -> None:
-    print(
-        """Destiny 2 — 本地排盘，解读可选
-
-用法:
-  destiny bazi Y M D H [G] [--minute N] [--second N] [--json]
-  destiny ziwei Y M D H [男|女] [--minute N] [--json]
-  destiny comprehensive Y M D H [G] [--minute N] [--json]
-  destiny calendar Y M D [H] [--minute N] [--json]
-  destiny lunar Y M D [--leap] [--json]
-  destiny iching dayan [问题] [--seed N] [--question-stdin] [--json]
-  destiny iching time Y M D H [问题] [--minute N] [--question-stdin] [--json]
-  destiny iching manual 789978 [问题] [--question-stdin] [--json]
-  destiny hepan Y1 M1 D1 H1 G1 Y2 M2 D2 H2 G2 [--json]
-  destiny liunian Y M D H [G] --year YYYY [--json]
-  destiny zeji 活动 --month YYYY-MM [--bazi Y M D H G] [--json]
-  destiny history --help
-  destiny doctor [--json]
-  destiny --cities
-
-核心默认离线。启用外部解读时必须显式提供:
-  --llm --provider minimax|deepseek|custom
-  --llm-fallback 仅在你同意把同一份数据发给备用供应商时使用。
-
-真太阳时:
-  --solar --city 上海
-  --solar --longitude 77.21 --tz 5.5
-  合盘请分别使用 --city1/--city2（或 longitude1/tz1 与 longitude2/tz2）。
-
-安全传递用户问题:
-  使用 --question-stdin，并通过进程 stdin 写入原文；不要把用户文本拼进 shell。
-"""
-    )
-
-
-def _default_flags() -> dict[str, Any]:
-    return {
-        "json": False,
-        "llm": False,
-        "no_llm": False,
-        "provider": None,
-        "llm_fallback": False,
-        "env_file": None,
-        "solar": False,
-        "city": "default",
-        "tz": None,
-        "longitude": None,
-        "minute": 0,
-        "second": 0,
-        "sect": 2,
-        "city1": None,
-        "city2": None,
-        "tz1": None,
-        "tz2": None,
-        "longitude1": None,
-        "longitude2": None,
-        "minute1": 0,
-        "minute2": 0,
-        "second1": 0,
-        "second2": 0,
-        "sect1": 2,
-        "sect2": 2,
-        "target_year": None,
-        "month": None,
-        "bazi_args": None,
-        "leap": False,
-        "seed": None,
-        "question_stdin": False,
-        "question_file": None,
-        "cities": False,
-    }
-
-
-def _parse_global_flags(argv: list[str]) -> tuple[dict[str, Any], list[str]]:
-    flags = _default_flags()
-    clean: list[str] = []
-    i = 0
-    value_flags: dict[str, tuple[str, Any]] = {
-        "--provider": ("provider", str),
-        "--env-file": ("env_file", str),
-        "--city": ("city", str),
-        "--tz": ("tz", float),
-        "--longitude": ("longitude", float),
-        "--minute": ("minute", int),
-        "--second": ("second", int),
-        "--sect": ("sect", int),
-        "--city1": ("city1", str),
-        "--city2": ("city2", str),
-        "--tz1": ("tz1", float),
-        "--tz2": ("tz2", float),
-        "--longitude1": ("longitude1", float),
-        "--longitude2": ("longitude2", float),
-        "--minute1": ("minute1", int),
-        "--minute2": ("minute2", int),
-        "--second1": ("second1", int),
-        "--second2": ("second2", int),
-        "--sect1": ("sect1", int),
-        "--sect2": ("sect2", int),
-        "--year": ("target_year", int),
-        "--month": ("month", str),
-        "--seed": ("seed", int),
-        "--question-file": ("question_file", str),
-    }
-    bool_flags = {
-        "--json": "json",
-        "--llm": "llm",
-        "--no-llm": "no_llm",
-        "--llm-fallback": "llm_fallback",
-        "--solar": "solar",
-        "--leap": "leap",
-        "--question-stdin": "question_stdin",
-        "--cities": "cities",
-    }
-    while i < len(argv):
-        token = argv[i]
-        if token == "--":
-            clean.extend(argv[i + 1 :])
-            break
-        if token in bool_flags:
-            flags[bool_flags[token]] = True
-        elif token == "--bazi":
-            if i + 5 >= len(argv):
-                raise CliError("--bazi 需要 Y M D H G 五个值")
-            try:
-                flags["bazi_args"] = tuple(int(value) for value in argv[i + 1 : i + 6])
-            except ValueError as exc:
-                raise CliError("--bazi 的五个值必须是整数") from exc
-            i += 5
-        elif token in value_flags:
-            if i + 1 >= len(argv):
-                raise CliError(f"{token} 缺少值")
-            field, converter = value_flags[token]
-            try:
-                flags[field] = converter(argv[i + 1])
-            except ValueError as exc:
-                raise CliError(f"{token} 的值无效: {argv[i + 1]}") from exc
-            i += 1
-        elif token.startswith("--"):
-            raise CliError(f"未知选项: {token}")
-        else:
-            clean.append(token)
-        i += 1
-
-    if flags["llm"] and flags["no_llm"]:
-        raise CliError("--llm 与 --no-llm 不能同时使用")
-    if flags["llm"] and not flags["provider"]:
-        raise CliError("使用 --llm 时必须显式指定 --provider")
-    if flags["llm_fallback"] and not flags["llm"]:
-        raise CliError("--llm-fallback 必须与 --llm 一起使用")
-    if flags["sect"] not in (1, 2) or flags["sect1"] not in (1, 2) or flags["sect2"] not in (1, 2):
-        raise CliError("--sect/--sect1/--sect2 必须是 1 或 2")
-    return flags, clean
-
-
-def _gender_int(value: str | int | None, default: int = 1) -> int:
-    if value is None:
-        return default
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError) as exc:
-        raise CliError("性别必须是 1（男）或 0（女）") from exc
-    if parsed not in (0, 1):
-        raise CliError("性别必须是 1（男）或 0（女）")
-    return parsed
-
-
-def _gender_text(value: str | None, default: str = "男") -> str:
-    parsed = value or default
-    aliases = {"1": "男", "0": "女", "male": "男", "female": "女"}
-    parsed = aliases.get(parsed.lower(), parsed) if isinstance(parsed, str) else parsed
-    if parsed not in ("男", "女"):
-        raise CliError("性别必须是 男/女（也可用 1/0）")
-    return parsed
-
-
-def _validate_birth(
-    year: int, month: int, day: int, hour: int, minute: int = 0, second: int = 0
-) -> None:
-    error = validate_datetime(year, month, day, hour, minute, second)
-    if error:
-        raise CliError(error)
-
-
-def _location_flags(flags: dict[str, Any], suffix: str = "") -> dict[str, Any]:
-    if suffix:
-        return {
-            "solar": flags["solar"]
-            or any(
-                flags[key] is not None
-                for key in (f"city{suffix}", f"tz{suffix}", f"longitude{suffix}")
-            ),
-            "city": flags[f"city{suffix}"] or "default",
-            "tz": flags[f"tz{suffix}"],
-            "longitude": flags[f"longitude{suffix}"],
-        }
-    return {
-        "solar": flags["solar"],
-        "city": flags["city"],
-        "tz": flags["tz"],
-        "longitude": flags["longitude"],
-    }
-
-
-def _apply_solar(
-    year: int,
-    month: int,
-    day: int,
-    hour: int,
-    minute: int,
-    second: int,
-    location: dict[str, Any],
-) -> tuple[tuple[int, int, int, int, int, int], dict[str, Any] | None]:
-    original = datetime(year, month, day, hour, minute, second)
-    if not (
-        location["solar"] or location["city"] != "default" or location["longitude"] is not None
-    ):
-        return (year, month, day, hour, minute, second), None
-
-    city = location["city"]
-    longitude = location["longitude"]
-    if city != "default" and not has_city(city) and longitude is None:
-        raise CliError(f"未知城市: {city}；请使用 --longitude 与 --tz 明确指定")
-    if longitude is None:
-        longitude = get_longitude(city)
-    if not -180 <= longitude <= 180:
-        raise CliError("经度必须在 -180 到 180 之间")
-    if city == "default" and location["tz"] is None and location["longitude"] is not None:
-        raise CliError("自定义 --longitude 时必须同时提供 --tz")
-
-    try:
-        offset = resolve_utc_offset(original, city, location["tz"])
-    except ValueError as exc:
-        raise CliError(str(exc)) from exc
-    corrected = true_solar_time(original, longitude, offset)
-    metadata = {
-        "convention_version": "true-solar-time-v2",
-        "original_civil_datetime": original.isoformat(timespec="seconds"),
-        "city": None if city == "default" else city,
-        "timezone": get_timezone_name(city) if city != "default" else None,
-        "utc_offset_hours": offset,
-        "longitude": longitude,
-        "tzdata_version": tzdata_version(),
-        "corrected_true_solar_datetime": corrected.isoformat(timespec="seconds"),
-    }
-    return (
-        corrected.year,
-        corrected.month,
-        corrected.day,
-        corrected.hour,
-        corrected.minute,
-        corrected.second,
-    ), metadata
-
-
-def _read_question(positional: str, flags: dict[str, Any]) -> str:
-    source_count = (
-        int(bool(positional)) + int(flags["question_stdin"]) + int(bool(flags["question_file"]))
-    )
-    if source_count > 1:
-        raise CliError("问题只能来自位置参数、--question-stdin 或 --question-file 其中一种")
-    if flags["question_stdin"]:
-        question = sys.stdin.read(MAX_QUESTION_CHARS + 1)
-    elif flags["question_file"]:
-        path = Path(flags["question_file"]).expanduser()
-        try:
-            if not path.is_file():
-                raise CliError(f"问题文件不存在: {path}")
-            if path.stat().st_size > 4 * (MAX_QUESTION_CHARS + 1):
-                raise CliError(f"问题文件超过 {MAX_QUESTION_CHARS:,} 字符安全上限")
-            with path.open(encoding="utf-8") as handle:
-                question = handle.read(MAX_QUESTION_CHARS + 1)
-        except (OSError, UnicodeError) as exc:
-            raise CliError(f"无法读取问题文件 {path}: {exc}") from exc
-    else:
-        question = positional
-    question = question.rstrip("\r\n")
-    if len(question) > MAX_QUESTION_CHARS:
-        raise CliError(f"问题文本超过 {MAX_QUESTION_CHARS:,} 字符限制")
-    return question
-
-
 def _attach_correction(result: dict[str, Any], correction: dict[str, Any] | None) -> None:
     if correction:
         result["time_correction"] = correction
-
-
-def _print_result(result: dict[str, Any], json_mode: bool) -> None:
-    if json_mode:
-        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
-        return
-
-    correction = result.get("time_correction")
-    if correction and "corrected_true_solar_datetime" in correction:
-        print(
-            "真太阳时校正: "
-            f"{correction['original_civil_datetime']} → "
-            f"{correction['corrected_true_solar_datetime']}",
-            file=sys.stderr,
-        )
-
-    kind = result["type"]
-    if kind in ("calendar", "lunar_to_solar", "doctor"):
-        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
-        return
-    if kind in ("bazi", "ziwei", "iching"):
-        print(result["text"])
-    elif kind == "comprehensive":
-        print(result["bazi"]["text"])
-        print("\n" + "-" * 48 + "\n")
-        print(result["ziwei"]["text"])
-    elif kind == "hepan":
-        print("【甲方八字】")
-        print(result["person1"]["text"])
-        print("\n【乙方八字】")
-        print(result["person2"]["text"])
-    elif kind == "liunian":
-        print(f"【{result['target_year']}年 · {result['year_ganzhi']}】\n")
-        print(result["bazi"]["text"])
-    elif kind == "zeji":
-        print(f"【{result['activity']}择日 · {result['month']}】")
-        print(f"匹配 {result['good_days']} / {result['total_days']} 天")
-        for item in result["candidates"][:10]:
-            print(f"  {item['date']} {item['weekday']} · {item['lunar']} · {item['ganzhi']}")
-            print(f"    宜: {', '.join(item['yi'][:8])}")
-    if result.get("interpretation"):
-        print("\n" + "=" * 60 + "\n")
-        print(result["interpretation"])
-    print(f"\n⚠️ {DISCLAIMER}")
-
-
-def doctor_report() -> dict[str, Any]:
-    python_ok = sys.version_info >= (3, 10)
-    node_path = shutil.which("node")
-    npm_path = shutil.which("npm")
-    iztro_path = ROOT_DIR / "node_modules" / "iztro" / "package.json"
-    node_version = None
-    node_ok = False
-    if node_path:
-        child_env = {
-            key: os.environ[key]
-            for key in ("PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT")
-            if key in os.environ
-        }
-        try:
-            process = subprocess.run(
-                [node_path, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-                env=child_env,
-            )
-            node_version = process.stdout.strip().lstrip("v")
-            node_ok = process.returncode == 0 and int(node_version.split(".", 1)[0]) >= 18
-        except (OSError, ValueError, subprocess.TimeoutExpired):
-            node_ok = False
-    checks = {
-        "python": {
-            "ok": python_ok,
-            "version": ".".join(map(str, sys.version_info[:3])),
-            "required": ">=3.10",
-        },
-        "lunar_python": {
-            "ok": engine_versions()["lunar_python"] is not None,
-            "version": engine_versions()["lunar_python"],
-        },
-        "tzdata": {
-            "ok": engine_versions()["tzdata"] == "2026.3",
-            "version": engine_versions()["tzdata"],
-            "required": "2026.3",
-        },
-        "httpx": {
-            "ok": HAS_HTTPX,
-            "version": engine_versions()["httpx"],
-            "needed_for": "optional --llm only",
-        },
-        "node": {"ok": node_ok, "path": node_path, "version": node_version, "required": ">=18"},
-        "npm": {"ok": bool(npm_path), "path": npm_path},
-        "iztro": {
-            "ok": iztro_path.is_file(),
-            "version": engine_versions()["iztro"],
-            "path": str(iztro_path),
-        },
-    }
-    ready_core = checks["python"]["ok"] and checks["lunar_python"]["ok"] and checks["tzdata"]["ok"]
-    ready_all = ready_core and checks["node"]["ok"] and checks["iztro"]["ok"]
-    return {
-        **base_result("doctor"),
-        "ready_core": ready_core,
-        "ready_all_engines": ready_all,
-        "checks": checks,
-    }
-
-
-def _ints(values: list[str], count: int, usage: str) -> list[int]:
-    if len(values) < count:
-        raise CliError(f"参数不足。用法: {usage}")
-    try:
-        return [int(value) for value in values[:count]]
-    except ValueError as exc:
-        raise CliError(f"日期和时间参数必须是整数。用法: {usage}") from exc
 
 
 async def main(argv: list[str] | None = None) -> int:
