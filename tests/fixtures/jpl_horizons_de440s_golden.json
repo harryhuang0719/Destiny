@@ -1,0 +1,364 @@
+{
+  "captured_at_utc": "2026-08-26T13:25:52Z",
+  "comparison_contract": {
+    "absolute_tolerances": {
+      "declination_deg": 2e-05,
+      "distance_au": 2e-08,
+      "latitude_deg": 5e-05,
+      "longitude_deg": 5e-05,
+      "longitude_velocity_deg_day": 0.0006,
+      "right_ascension_deg": 5e-05
+    },
+    "destiny_frame": {
+      "ecliptic": "of-date",
+      "origin": "geocentric",
+      "position": "apparent",
+      "radec_epoch": "of-date"
+    },
+    "known_frame_difference": {
+      "consequence": "small non-zero angular and dynamical-ephemeris differences are expected",
+      "destiny": "Skyfield IAU2000/2006 of-date, DE440s",
+      "horizons": "IAU76/80 of-date, DE441"
+    },
+    "observer_naif_id": 399,
+    "velocity_derivation": "circular signed difference of Horizons quantity 31 longitudes at t+30m and t-30m, multiplied by 24 hours/day"
+  },
+  "epochs": [
+    {
+      "bodies": {
+        "jupiter": {
+          "declination_deg": -22.826195069,
+          "destiny_expected_target_label": "jupiter barycenter",
+          "distance_au": 6.22784822238846,
+          "horizons_target_name": "Jupiter Barycenter",
+          "latitude_deg": 0.3977773,
+          "longitude_deg": 262.3497437,
+          "observer_naif_id": 399,
+          "range_rate_km_s": -8.89599,
+          "right_ascension_deg": 261.695508732,
+          "target_naif_id": 5,
+          "velocity_support": {
+            "after_longitude_deg": 262.3543647,
+            "after_timestamp_utc": "1972-01-01T00:30:00Z",
+            "before_longitude_deg": 262.3451227,
+            "before_timestamp_utc": "1971-12-31T23:30:00Z",
+            "derived_longitude_velocity_deg_day": 0.22180800000069212
+          }
+        },
+        "mars": {
+          "declination_deg": 1.19744249,
+          "destiny_expected_target_label": "mars barycenter",
+          "distance_au": 1.19647260409573,
+          "horizons_target_name": "Mars Barycenter",
+          "latitude_deg": -0.1599393,
+          "longitude_deg": 3.3802997,
+          "observer_naif_id": 399,
+          "range_rate_km_s": 14.96342,
+          "right_ascension_deg": 3.165370022,
+          "target_naif_id": 4,
+          "velocity_support": {
+            "after_longitude_deg": 3.3937651,
+            "after_timestamp_utc": "1972-01-01T00:30:00Z",
+            "before_longitude_deg": 3.3668352,
+            "before_timestamp_utc": "1971-12-31T23:30:00Z",
+            "derived_longitude_velocity_deg_day": 0.6463175999999748
+          }
+        },
+        "moon": {
+          "declination_deg": 25.031467428,
+          "destiny_expected_target_label": "moon",
+          "distance_au": 0.00250701965703,
+          "horizons_target_name": "Moon",
+          "latitude_deg": 2.1044648,
+          "longitude_deg": 101.6302805,
+          "observer_naif_id": 399,
+          "range_rate_km_s": 0.0452158,
+          "right_ascension_deg": 102.846690485,
+          "target_naif_id": 301,
+          "velocity_support": {
+            "after_longitude_deg": 101.9187011,
+            "after_timestamp_utc": "1972-01-01T00:30:00Z",
+            "before_longitude_deg": 101.3417394,
+            "before_timestamp_utc": "1971-12-31T23:30:00Z",
+            "derived_longitude_velocity_deg_day": 13.84708080000064
+          }
+        },
+        "sun": {
+          "declination_deg": -23.092119514,
+          "destiny_expected_target_label": "sun",
+          "distance_au": 0.98323097187895,
+          "horizons_target_name": "Sun",
+          "latitude_deg": 0.000132,
+          "longitude_deg": 279.6626968,
+          "observer_naif_id": 399,
+          "range_rate_km_s": -0.0244579,
+          "right_ascension_deg": 280.513531369,
+          "target_naif_id": 10,
+          "velocity_support": {
+            "after_longitude_deg": 279.6839272,
+            "after_timestamp_utc": "1972-01-01T00:30:00Z",
+            "before_longitude_deg": 279.6414675,
+            "before_timestamp_utc": "1971-12-31T23:30:00Z",
+            "derived_longitude_velocity_deg_day": 1.0190328000012414
+          }
+        }
+      },
+      "timestamp_utc": "1972-01-01T00:00:00Z"
+    },
+    {
+      "bodies": {
+        "jupiter": {
+          "declination_deg": 8.594263882,
+          "destiny_expected_target_label": "jupiter barycenter",
+          "distance_au": 4.62117513332102,
+          "horizons_target_name": "Jupiter Barycenter",
+          "latitude_deg": -1.2621868,
+          "longitude_deg": 25.2530736,
+          "observer_naif_id": 399,
+          "range_rate_km_s": 26.8771423,
+          "right_ascension_deg": 23.86784141,
+          "target_naif_id": 5,
+          "velocity_support": {
+            "after_longitude_deg": 25.2539235,
+            "after_timestamp_utc": "2000-01-01T12:30:00Z",
+            "before_longitude_deg": 25.2522251,
+            "before_timestamp_utc": "2000-01-01T11:30:00Z",
+            "derived_longitude_velocity_deg_day": 0.04076160000022355
+          }
+        },
+        "mars": {
+          "declination_deg": -13.182481236,
+          "destiny_expected_target_label": "mars barycenter",
+          "distance_au": 1.84968786270251,
+          "horizons_target_name": "Mars Barycenter",
+          "latitude_deg": -1.0677752,
+          "longitude_deg": 327.9632921,
+          "observer_naif_id": 399,
+          "range_rate_km_s": 9.388632,
+          "right_ascension_deg": 330.516799463,
+          "target_naif_id": 4,
+          "velocity_support": {
+            "after_longitude_deg": 327.979452,
+            "after_timestamp_utc": "2000-01-01T12:30:00Z",
+            "before_longitude_deg": 327.9471322,
+            "before_timestamp_utc": "2000-01-01T11:30:00Z",
+            "derived_longitude_velocity_deg_day": 0.7756751999995686
+          }
+        },
+        "moon": {
+          "declination_deg": -10.90065378,
+          "destiny_expected_target_label": "moon",
+          "distance_au": 0.00268998925442,
+          "horizons_target_name": "Moon",
+          "latitude_deg": 5.1707422,
+          "longitude_deg": 223.323786,
+          "observer_naif_id": 399,
+          "range_rate_km_s": 0.0321666,
+          "right_ascension_deg": 222.452200851,
+          "target_naif_id": 301,
+          "velocity_support": {
+            "after_longitude_deg": 223.5741983,
+            "after_timestamp_utc": "2000-01-01T12:30:00Z",
+            "before_longitude_deg": 223.0733096,
+            "before_timestamp_utc": "2000-01-01T11:30:00Z",
+            "derived_longitude_velocity_deg_day": 12.021328800000447
+          }
+        },
+        "sun": {
+          "declination_deg": -23.03243013,
+          "destiny_expected_target_label": "sun",
+          "distance_au": 0.98332762652701,
+          "horizons_target_name": "Sun",
+          "latitude_deg": 0.0002381,
+          "longitude_deg": 280.3689092,
+          "observer_naif_id": 399,
+          "range_rate_km_s": -0.0127281,
+          "right_ascension_deg": 281.278375239,
+          "target_naif_id": 10,
+          "velocity_support": {
+            "after_longitude_deg": 280.3901474,
+            "after_timestamp_utc": "2000-01-01T12:30:00Z",
+            "before_longitude_deg": 280.347671,
+            "before_timestamp_utc": "2000-01-01T11:30:00Z",
+            "derived_longitude_velocity_deg_day": 1.0194335999999566
+          }
+        }
+      },
+      "timestamp_utc": "2000-01-01T12:00:00Z"
+    },
+    {
+      "bodies": {
+        "jupiter": {
+          "declination_deg": 21.787379195,
+          "destiny_expected_target_label": "jupiter barycenter",
+          "distance_au": 4.19074991088322,
+          "horizons_target_name": "Jupiter Barycenter",
+          "latitude_deg": -0.6015671,
+          "longitude_deg": 73.2154473,
+          "observer_naif_id": 399,
+          "range_rate_km_s": 13.4294505,
+          "right_ascension_deg": 71.882231561,
+          "target_naif_id": 5,
+          "velocity_support": {
+            "after_longitude_deg": 73.2132298,
+            "after_timestamp_utc": "2025-01-01T00:30:00Z",
+            "before_longitude_deg": 73.2176658,
+            "before_timestamp_utc": "2024-12-31T23:30:00Z",
+            "derived_longitude_velocity_deg_day": -0.10646399999995992
+          }
+        },
+        "mars": {
+          "declination_deg": 23.545226064,
+          "destiny_expected_target_label": "mars barycenter",
+          "distance_au": 0.65672048285631,
+          "horizons_target_name": "Mars Barycenter",
+          "latitude_deg": 3.9146227,
+          "longitude_deg": 121.9179094,
+          "observer_naif_id": 399,
+          "range_rate_km_s": -4.2468067,
+          "right_ascension_deg": 125.125743302,
+          "target_naif_id": 4,
+          "velocity_support": {
+            "after_longitude_deg": 121.911074,
+            "after_timestamp_utc": "2025-01-01T00:30:00Z",
+            "before_longitude_deg": 121.9247404,
+            "before_timestamp_utc": "2024-12-31T23:30:00Z",
+            "derived_longitude_velocity_deg_day": -0.3279936000001271
+          }
+        },
+        "moon": {
+          "declination_deg": -25.860479138,
+          "destiny_expected_target_label": "moon",
+          "distance_au": 0.00255180357453,
+          "horizons_target_name": "Moon",
+          "latitude_deg": -4.6098927,
+          "longitude_deg": 293.9135958,
+          "observer_naif_id": 399,
+          "range_rate_km_s": -0.0394737,
+          "right_ascension_deg": 296.680295918,
+          "target_naif_id": 301,
+          "velocity_support": {
+            "after_longitude_deg": 294.1937265,
+            "after_timestamp_utc": "2025-01-01T00:30:00Z",
+            "before_longitude_deg": 293.6335569,
+            "before_timestamp_utc": "2024-12-31T23:30:00Z",
+            "derived_longitude_velocity_deg_day": 13.444070400001237
+          }
+        },
+        "sun": {
+          "declination_deg": -22.998208031,
+          "destiny_expected_target_label": "sun",
+          "distance_au": 0.98335315334605,
+          "horizons_target_name": "Sun",
+          "latitude_deg": -0.0001656,
+          "longitude_deg": 280.8136,
+          "observer_naif_id": 399,
+          "range_rate_km_s": -0.0244525,
+          "right_ascension_deg": 281.76009349,
+          "target_naif_id": 10,
+          "velocity_support": {
+            "after_longitude_deg": 280.8348427,
+            "after_timestamp_utc": "2025-01-01T00:30:00Z",
+            "before_longitude_deg": 280.7923574,
+            "before_timestamp_utc": "2024-12-31T23:30:00Z",
+            "derived_longitude_velocity_deg_day": 1.019647200000236
+          }
+        }
+      },
+      "timestamp_utc": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "fixture_id": "jpl-horizons-geocentric-apparent-de440s-v1",
+  "provenance": {
+    "horizons_api_documentation_url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html",
+    "horizons_api_signature": {
+      "source": "NASA/JPL Horizons API",
+      "version": "1.2"
+    },
+    "horizons_api_url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "horizons_dynamical_ephemeris": "DE441",
+    "horizons_user_guide_url": "https://ssd.jpl.nasa.gov/horizons/manual.html",
+    "official_de440s": {
+      "download_url": "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de440s.bsp",
+      "http_last_modified_utc": "2020-12-22T00:56:36Z",
+      "naif_mirror_url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp",
+      "sha256": "c1c7feeab882263fc493a9d5a5b2ddd71b54826cdf65d8d17a76126b260a49f2",
+      "size_bytes": 32726016,
+      "spk_segment_target_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        301,
+        399,
+        199,
+        299
+      ]
+    }
+  },
+  "query": {
+    "common_parameters": {
+      "ANG_FORMAT": "DEG",
+      "APPARENT": "AIRLESS",
+      "CAL_FORMAT": "CAL",
+      "CAL_TYPE": "GREGORIAN",
+      "CENTER": "500@399",
+      "CSV_FORMAT": "YES",
+      "EPHEM_TYPE": "OBSERVER",
+      "EXTRA_PREC": "YES",
+      "MAKE_EPHEM": "YES",
+      "OBJ_DATA": "NO",
+      "QUANTITIES": "2,20,31",
+      "REF_PLANE": "ECLIPTIC",
+      "REF_SYSTEM": "ICRF",
+      "TIME_DIGITS": "SECONDS",
+      "TIME_TYPE": "UT",
+      "format": "json"
+    },
+    "quantity_mapping": {
+      "2": "airless apparent RA/Dec, Earth equator and equinox of date, IAU76/80, decimal degrees",
+      "20": "apparent observer range in AU and range-rate in km/s",
+      "31": "observer-centered apparent IAU76/80 ecliptic-of-date longitude/latitude in degrees"
+    },
+    "targets": {
+      "jupiter": {
+        "COMMAND": "5",
+        "expected_name": "Jupiter Barycenter",
+        "naif_id": 5
+      },
+      "mars": {
+        "COMMAND": "4",
+        "expected_name": "Mars Barycenter",
+        "naif_id": 4
+      },
+      "moon": {
+        "COMMAND": "301",
+        "expected_name": "Moon",
+        "naif_id": 301
+      },
+      "sun": {
+        "COMMAND": "10",
+        "expected_name": "Sun",
+        "naif_id": 10
+      }
+    },
+    "tlist_utc": [
+      "1971-12-31T23:30:00Z",
+      "1972-01-01T00:00:00Z",
+      "1972-01-01T00:30:00Z",
+      "2000-01-01T11:30:00Z",
+      "2000-01-01T12:00:00Z",
+      "2000-01-01T12:30:00Z",
+      "2024-12-31T23:30:00Z",
+      "2025-01-01T00:00:00Z",
+      "2025-01-01T00:30:00Z"
+    ]
+  },
+  "schema_version": "1.0.0"
+}

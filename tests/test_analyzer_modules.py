@@ -135,11 +135,14 @@ def test_doctor_keeps_optional_adapters_out_of_core_readiness(
     monkeypatch.setattr(
         output_support,
         "engine_versions",
-        lambda: {
+        lambda **_kwargs: {
             "destiny_schema": output_support.SCHEMA_VERSION,
+            "destiny_package": "2.2.0",
             "lunar_python": "1.4.8",
             "tzdata": "2026.3",
             "httpx": None,
+            "skyfield": None,
+            "numpy": None,
             "iztro": None,
         },
     )

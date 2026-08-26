@@ -2,7 +2,7 @@
   "ownerId": "harryhuang0719",
   "slug": "destiny",
   "name": "destiny",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "离线优先的历法、八字、紫微、周易卦象与可审计历史天文研究",
   "repository": "https://github.com/harryhuang0719/Destiny",
   "requiredEnv": {}

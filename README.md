@@ -21,7 +21,7 @@ Destiny 是一个离线优先、可审计的传统命理计算 Skill，也是一
 
 > **算盘先响，翻译官后开口。** 排盘由确定性代码完成；自然语言只是解释层，不参与偷偷改盘。
 
-同样，历史研究必须有能力得到“这个 MVP 没有发现稳定的预注册单变量关联”这个结论。否则它不是研究，只是一台会讲故事的 p-hacking 机器。带金融控制变量的 M0-vs-M2 增量检验仍属于下一阶段，当前版本不会偷换概念。
+同样，历史研究必须允许两种不浪漫、却很重要的结论：“没有稳定的预注册单变量关联”，以及“加入这组天文特征后，M2 并没有比声明过的金融控制基线 M0 更好”。v2.2 增加了后者的配对检验，但它只对用户提供的 controls、样本与 null procedures 有效，不会把一张漂亮的 p-value 通行证伪造成因果。
 
 > [!CAUTION]
 > Destiny 用于传统文化、娱乐与可证伪的历史关联研究。它不提供医疗、法律、投资建议，也不替任何人做婚姻、职业或人生决定。历史相关性不等于因果，更不等于可交易利润。
@@ -38,9 +38,10 @@ python3 scripts/bootstrap.py --installer auto
 ./destiny bazi 1990 1 15 14 1 --json
 ```
 
-这条命令跟随 `main`，在 `v2.1.0` 出现在
+这条命令跟随 `main`。`v2.1.0` 是已经发布的稳定基线；当前源码准备
+`2.2.0`。等 `v2.2.0` 实际出现在
 [Releases](https://github.com/harryhuang0719/Destiny/releases) 后，生产部署可把
-clone 改成 `git clone --branch v2.1.0 --depth 1 ...` 来固定版本。
+clone 改成 `git clone --branch v2.2.0 --depth 1 ...` 来固定版本。
 
 `--installer auto` 是默认值：本机有 uv 且 `uv lock --check` 通过时，使用
 `uv sync --frozen`；否则说明原因并回退 pip。`--installer uv` 会强制使用完整
@@ -121,11 +122,16 @@ npm ci --ignore-scripts
 因此 wheel 环境中的紫微会明确退出 3；这是有意的能力边界，不是静默降级。
 需要完整 Skill 与紫微时，请使用 Git clone + bootstrap 流程。
 
+`research` / `all` 还直接锁定 NumPy：Python `<3.11` 用 `2.2.6`、`3.11`
+用 `2.4.6`、`>=3.12` 用 `2.5.2`。Skyfield 本来会间接带入 NumPy，但 v2.2
+的 ridge contract 直接依赖 float64 与 `numpy.linalg.solve`，所以把它写成
+一等依赖并冻结解析结果。NumPy 只在 incremental path 懒加载，核心安装不受影响。
+
 ### Doctor 到底检查什么？
 
 ```bash
 ./destiny doctor --core --json       # Python、lunar-python、固定 tzdata
-./destiny doctor --research --json   # core + Skyfield；不下载/检查 JPL kernel
+./destiny doctor --research --json   # core + Skyfield + NumPy；不下载/检查 JPL kernel
 ./destiny doctor --all --json        # core + Node 18+ + 版本吻合且可加载的 iztro
 ```
 
@@ -139,8 +145,8 @@ JSON 的 `selected_mode` 与 `selected_mode_ready` 可供任何 agent 稳定判�
 
 仓库根目录就是唯一的 `SKILL.md`。支持 Skill discovery 的工具把仓库放进
 自己的 Skill 目录即可；不支持的工具也只需 clone 到任意目录，再让 agent
-先读 `SKILL.md`。`v2.1.0` tag 发布后推荐固定它以便复现；发布前或需要最新
-开发版本时使用 `main`。
+先读 `SKILL.md`。当前可固定已发布的 `v2.1.0`；需要增量研究时暂用 `main`，
+等 `v2.2.0` Release 真正出现后再固定该 tag。
 
 ### 任何 Agent 都能照做的协议
 
@@ -189,8 +195,8 @@ python3 ~/.claude/skills/destiny/scripts/bootstrap.py --installer auto
 ### OpenClaw
 
 以下命令从 `main` 安装到当前 active workspace；`--global` 才会安装到
-共享 managed skill 目录。等 Release 页面出现 `v2.1.0` 后，将 `main` 换成
-`v2.1.0` 即可固定版本：
+共享 managed skill 目录。等 Release 页面出现 `v2.2.0` 后，将 `main` 换成
+`v2.2.0` 即可固定增量研究版本：
 
 ```bash
 openclaw skills install git:harryhuang0719/Destiny@main
@@ -212,20 +218,22 @@ Windows 将 `python3` 换成 `py -3`，启动器使用 `destiny.ps1` 或
 
 发布工作流只接受位于 `main` 历史、且所有版本元数据完全一致的 `v*` tag。
 发布前还必须由两个隔离源码副本产出逐字节一致的 wheel 与规范化 sdist。
-当 [v2.1.0 Release](https://github.com/harryhuang0719/Destiny/releases/tag/v2.1.0)
-实际出现后，页面应包含 wheel、sdist 与 `SHA256SUMS`；在此之前请使用源码
-安装，不要假设下面的资产已经存在。
+[v2.1.0 Release](https://github.com/harryhuang0719/Destiny/releases/tag/v2.1.0)
+是不可变的历史版本。当前 `2.2.0` 源码只有在
+[v2.2.0 Release](https://github.com/harryhuang0719/Destiny/releases/tag/v2.2.0)
+实际出现后，才应有 wheel、sdist 与 `SHA256SUMS`；在此之前不要假设下面的
+v2.2 资产已经存在。
 
 ```bash
-gh release download v2.1.0 --repo harryhuang0719/Destiny
+gh release download v2.2.0 --repo harryhuang0719/Destiny
 sha256sum -c SHA256SUMS       # Linux
 # macOS: shasum -a 256 -c SHA256SUMS
-gh attestation verify destiny_agent_skill-2.1.0-py3-none-any.whl \
+gh attestation verify destiny_agent_skill-2.2.0-py3-none-any.whl \
   --repo harryhuang0719/Destiny
-python3 -m pip install ./destiny_agent_skill-2.1.0-py3-none-any.whl
+python3 -m pip install ./destiny_agent_skill-2.2.0-py3-none-any.whl
 ```
 
-成功发布后，wheel 与 `destiny_agent_skill-2.1.0.tar.gz` 都应能通过
+成功发布后，wheel 与 `destiny_agent_skill-2.2.0.tar.gz` 都应能通过
 GitHub/Sigstore build provenance 验证。
 
 ## 两条清清楚楚的流水线
@@ -249,11 +257,18 @@ flowchart LR
     M[BYOD point-in-time targets] --> Q[仅向后的 as-of 对齐]
     F --> Q
     H[预注册 hypothesis] --> Q
-    Q --> R[Chronological split · Placebo · maxT/BH]
-    R --> E[EXPLORATORY / PSEUDO_OOS / DECLARED PROSPECTIVE]
+    Q --> U[Legacy 单变量 · maxT/BH]
+    C[哈希 controls long CSV + catalog] --> A[controls as-of · complete case]
+    Q --> A
+    A --> R[M0 controls ↔ M2 controls + all astro · shared folds]
+    R --> N[HAC · circular MBB · full-pipeline C_N placebo]
+    U --> E[克制的 evidence labels]
+    N --> E
 ```
 
-第一条线服务传统文化计算；第二条线的 MVP 检验预注册天文特征与市场 target 的单变量历史关联。带普通金融控制变量的真正增量检验尚未实现。两者不能相互偷渡结论：历史市场相关性即使存在，也不能证明个人命盘有效；个人命理解读也不是市场模型的证据。
+第一条线服务传统文化计算。第二条线保留 legacy 单变量筛查，也提供显式启用的
+M0-vs-M2 增量路径。两者不能相互偷渡结论：市场预测差异即使存在，也不能证明
+个人命盘有效；个人命理解读也不是市场模型的证据。
 
 ## 命理 CLI
 
@@ -414,21 +429,33 @@ curl --fail --location \
 
 更高 harmonic、更多 pair、不同 orb 都是额外 hypothesis，必须在查看 OOS 前固定。
 
-### 4. 导入你自己的 point-in-time target
+### 4. 准备 BYOD target 与 controls
 
 本仓库不下载、不捆绑、不重新分发行情。先复制 [研究输入模板](examples/research/)：
 
 - `series_catalog.example.json`：精确声明 vendor、series、instrument、venue、时区、calendar、price/target 语义、tradability、vintage 与许可；
-- `hypothesis.example.json`：冻结 feature family、方向、有效周期、split、embargo、placebo 次数与 seed；
+- `hypothesis.example.json`：legacy schema-1.0 单变量 manifest；
+- `hypothesis.incremental.example.json`：完整 schema-2.0 M0/M2 manifest；
+- `controls.example.csv` + `controls_catalog.example.json`：经过 validator 的
+  point-in-time long-table 小样；
+- `generate_incremental_demo.py`：生成 150 行、可完整运行的纯 synthetic demo；
 - `target_schema.csv`：每行必须满足：
 
 ```text
 observation <= available <= decision < execution <= target_start < target_end
 ```
 
-日期只有 `2025-01-01` 而没有 offset，会被拒绝。未来 feature join 会被拒绝。VIX、收益率等 indicator 如果标记 `tradable=false`，系统不会伪造策略 Sharpe。
+Controls 的精确 header 是
+`control_id,observation_time_utc,available_at_utc,vintage_id,value`，并按
+`(control_id, observation, available)` 严格递增。
+Catalog 的 SHA-256 必须匹配 CSV。空字符串是唯一 missing marker；不允许
+future/nearest join、插值、回填、post-decision revision 或从 blank latest
+回退旧值。
 
-### 5. 运行预注册研究
+日期只有 `2025-01-01` 而没有 offset，会被拒绝。未来 feature/control join
+会被拒绝。VIX、收益率等 indicator 如果标记 `tradable=false`，系统不会伪造策略 Sharpe。
+
+### 5A. Legacy 单变量研究
 
 ```bash
 ./destiny history research \
@@ -439,6 +466,9 @@ observation <= available <= decision < execution <= target_start < target_end
   --trial-registry /path/to/trials.ndjson \
   --out /path/to/result.json
 ```
+
+`incremental_model` 缺失或精确等于 `{"enabled": false}` 时走这条兼容路径，
+计算与 result schema 保持 `1.0.0`。
 
 默认会验证同目录的 `astro_daily.csv.manifest.json`；若 sidecar 在别处，显式
 加 `--feature-manifest /path/to/manifest.json`。manifest、CSV、target、catalog、
@@ -454,6 +484,43 @@ hypothesis、registry 与 result 不能互相复用路径或 hard-link identity�
 - 对非重叠、可交易 return target 才会生成的简化 OOS threshold strategy；
 - 限制与 evidence status。
 
+### 5B. M0-vs-M2 增量研究
+
+```bash
+./destiny history research \
+  --features data/astro_daily.csv \
+  --targets /path/to/targets.csv \
+  --catalog /path/to/series_catalog.json \
+  --hypothesis /path/to/hypothesis.incremental.json \
+  --controls /path/to/controls.csv \
+  --controls-catalog /path/to/controls.catalog.json \
+  --trial-registry /path/to/trials.ndjson \
+  --out /path/to/result.json
+```
+
+Enabled mode 要求 hypothesis schema `2.0.0`，两个 controls 参数必须成对出现，
+输出 result schema `2.0.0`。M0 使用全部预注册 controls；M2 在完全相同的
+rows/folds 上加入全部预注册 astronomy features。两者共享 alpha grid 与 fit
+预算；train-constant columns 会记录后冻结删除。两者各自在 train→validation
+选 alpha，再用 train+validation refit，最后只打开一次 test。主统计量
+`d = squared_loss_M0 - squared_loss_M2`，正值偏向 M2。
+
+推断不是只扔出一颗 p-value：
+
+- Newey-West HAC 使用预注册 lag；
+- circular moving-block bootstrap 用 uncentered distribution 做 CI、centered
+  null 做单侧 p，但不假装覆盖完整模型选择不确定性；
+- full-pipeline placebo 从完整循环群 `C_N` 的非零 joint shifts 中取样，controls、
+  targets、timestamps 与 split 不动，而每次重新执行 M2 的常数检测、全 alpha
+  grid、refit 与 test loss；
+- robust p 是三个 component p 的 `max`，对应 union-null 的保守
+  intersection-union 构造；再做 `min(1, family_size × p_robust)` Bonferroni。
+  任一 component p 为 null 时，robust/family p 也保持 null。
+
+最后一步仍有边界：family p 依赖声明的 family 真实且完整，本地 runner 不能
+证明全局 family completeness 或 `family_index` 唯一。`threshold_met` 只是
+diagnostic，绝不会升级 evidence label。
+
 状态的含义很克制：
 
 | 状态 | 含义 |
@@ -462,8 +529,12 @@ hypothesis、registry 与 result 不能互相复用路径或 hard-link identity�
 | `PSEUDO_OOS_ONLY` | 时间上切开，但历史结果早已可见，不是假装封存的确认 |
 | `PROSPECTIVE_DECLARED_UNVERIFIED` | 本地时间/Git 门禁通过的 prospective 声明；没有外部时间戳/公证，不能自我认证 |
 | `DESCRIPTIVE` | 周期/事件数不足，只能描述 |
+| `EVALUATED_EXPLORATORY` / `EVALUATED_PSEUDO_OOS_ONLY` / `EVALUATED_PROSPECTIVE_DECLARED_UNVERIFIED` | incremental evaluation 对应的内部状态；不代表确认 |
 
-当前研究 MVP 故意不会打印 `CONFIRMATORY_PASS`。它只有预注册单变量检验，不含金融控制变量或 M0 对 M2 的 paired incremental model。真正强证据还需要完整 pipeline placebo、block/HAC inference、独立 Horizons golden、真实交易日历/early close、M0 对 M2 paired comparison、成本压力与未来 prospective 数据。详见 [历史研究方法](references/historical-research.md)。
+两个路径都不会打印 `CONFIRMATORY_PASS`。Incremental 结果仍只是在给定 controls、
+样本、ridge 与 null procedures 条件下的配对预测损失比较，不证明完整金融信息已被
+控制，更不证明因果、命理有效、稳定 alpha 或可交易利润。详见
+[历史研究方法](references/historical-research.md)。
 
 ## “支持”与“不冒充支持”
 
@@ -475,14 +546,14 @@ hypothesis、registry 与 result 不能互相复用路径或 hard-link identity�
 | 易经 | 起卦、本/互/变卦、变爻指导 | 完整纳甲六爻与全爻辞库 |
 | 择日 | 宜忌透明初筛 | 成功保证或完整择日术 |
 | 历史天文 | 哈希 JPL kernel、连续特征、明确 frame | NASA/JPL 背书或历史 vintage 可执行性 |
-| 历史研究 | point-in-time、OOS 流程、placebo/multiplicity | 因果、稳定 alpha、production trading |
+| 历史研究 | legacy 单变量 + opt-in paired M0/M2、HAC/MBB/声明的 C_N joint shifts | 完整金融 baseline、因果、稳定 alpha、production trading |
 
 ## JSON 与退出码
 
-当前源码的 package/Skill version 是 `2.1.0`；只有 tag 工作流成功后，它才是
-已发布 release。源码版本也不等于数据协议版本：主输出仍使用
-`schema_version: "2.0.0"`，天文与历史研究 schema 仍为 `1.0.0`。结果包含
-引擎版本和计算口径，避免重构或升级后静默改义。
+当前源码的 package/Skill version 是 `2.2.0`；只有 `v2.2.0` tag 工作流成功后，
+它才是已发布 release。源码版本也不等于数据协议版本：核心 JSON 仍是 `2.0.0`，
+天文是 `1.0.0`，legacy research 是 `1.0.0`，enabled incremental research
+才是 `2.0.0`。结果包含引擎版本、analysis mode 与计算口径，避免静默改义。
 
 | Exit code | 含义 |
 |---:|---|
@@ -503,7 +574,7 @@ npm test
 npm audit --omit=dev
 ```
 
-当前基线收集 122+ 个回归与集成测试，覆盖：
+测试套件覆盖：
 
 - 立春精确到秒的四柱切换；
 - 已知八字与男女大运；
@@ -515,6 +586,9 @@ npm audit --omit=dev
 - 纽约 DST、歧义/不存在时间、半小时时区；
 - 每个 `--no-llm` 路径、纯 JSON 与恶意问题文本；
 - circular geometry、FDR、point-in-time 违例、as-of join、trial registry、placebo 与 indicator 禁止伪回测；
+- controls revision/staleness/blank-latest、M0/M2 shared rows、ridge golden、HAC、
+  circular block、完整 `C_N` shift 与 conservative family correction；
+- Sun/Moon/Mars/Jupiter 三个 epoch 的离线 JPL Horizons independent golden；
 - 可选真实 JPL kernel smoke test。
 
 CI 不调用真实 LLM，不提交或缓存私人数据。
@@ -550,7 +624,8 @@ Destiny/
 ├── references/                      # 方法、隐私、agent 与历史研究口径
 ├── docs/                            # 原始 Blueprint 与实现修正
 ├── examples/research/               # 无市场数据的 schema/config 模板
-├── tests/
+│   └── generate_incremental_demo.py  # 完整 synthetic M0/M2 demo
+├── tests/ + tests/fixtures/          # regression、numeric golden、legacy fixture
 ├── package.json / package-lock.json
 └── pyproject.toml
 ```
@@ -574,7 +649,7 @@ Node 需 18+。只用非紫微功能可重新 bootstrap `--skip-node`；它不�
 python3 scripts/bootstrap.py --installer auto --research
 ```
 
-Skyfield 只是研究 extra，不应拖进普通排盘环境。
+Skyfield 与按 Python 版本锁定的 NumPy 都只属于研究 extra，不会拖进普通排盘环境。
 
 ### 1972 年前时间被拒绝
 
@@ -592,7 +667,8 @@ python3 -m json.tool chart.json
 ## 安全、许可与致谢
 
 - Destiny 源码：MIT，见 [LICENSE](LICENSE)。
-- `lunar-python`：MIT；`iztro`：MIT；`httpx`：BSD-3-Clause；Skyfield：MIT。
+- `lunar-python`：MIT；`iztro`：MIT；`httpx`：BSD-3-Clause；Skyfield：MIT；
+  NumPy project：BSD-3-Clause（wheel bundled components 另见其 notices）。
 - 完整说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 - JPL kernel 是外部数据，不进入仓库；使用者保留来源与 SHA-256。Destiny 不代表 NASA/JPL 背书。
 - Swiss Ephemeris / `pyswisseph` 因 AGPL/商业双许可没有被悄悄加入 MIT 核心。
@@ -600,4 +676,5 @@ python3 -m json.tool chart.json
 
 漏洞请按 [SECURITY.md](SECURITY.md) 私下报告；贡献算法或研究方法前请读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-如果最后跑出来的结论是“星辰很美，但这个预注册 family 没有稳定的单变量市场关联”，那不是失败——那正是这套系统保持诚实的一刻。
+如果最后跑出来的结论是“星辰很美，但 M2 没有在这套声明过的 M0 controls 之外
+稳定降低 OOS loss”，那不是失败——那正是这套系统保持诚实的一刻。

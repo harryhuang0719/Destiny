@@ -77,3 +77,13 @@ The deterministic engines never require a model. External interpretation is
 off by default. MiniMax, DeepSeek, and custom OpenAI-compatible endpoints are
 single-provider opt-ins; automatic cross-provider fallback is disabled unless
 the user separately requests it. Provider/model metadata is returned, never the key.
+
+## Historical research boundary
+
+Historical market research is a separate falsifiable layer, not evidence that a
+personal chart system is true. Legacy mode reports univariate associations.
+Enabled incremental mode compares M0 controls with M2 controls-plus-all-declared
+astronomy on identical rows and folds; positive paired loss differential favors
+M2 only under that supplied baseline and registered procedure. See
+[historical research](historical-research.md) for controls, inference, schema,
+and evidence-label conventions.

@@ -3,6 +3,43 @@
 Destiny follows semantic versioning for the package and Skill. JSON contracts
 have their own versions and change only when their wire format changes.
 
+## [2.2.0] - 2026-08-26
+
+> This section describes the `2.2.0` source candidate. It becomes a published
+> GitHub Release only after the matching `v2.2.0` tag workflow succeeds.
+
+### Added
+
+- Added an opt-in incremental research path with strict long-form point-in-time
+  controls and hashed controls catalogs.
+- Added paired ridge models on identical rows and folds: M0 uses all declared
+  controls, while M2 adds every preregistered astronomy feature under the same
+  alpha grid and fit budget.
+- Added Newey-West HAC inference, circular moving-block bootstrap, and a full
+  M2-pipeline joint circular-shift placebo over the declared cyclic group.
+- Added conservative union-null max-p aggregation and Bonferroni family
+  adjustment, with explicit limits on what the local runner can certify.
+- Added validator-clean controls/hypothesis templates and a complete synthetic
+  end-to-end incremental demo generator.
+
+### Dependencies
+
+- NumPy is now a direct, exact-pinned `research`/`all` dependency because the
+  incremental contract directly relies on float64 arrays and `numpy.linalg`.
+  Python-specific pins keep resolution explicit; the core install is unchanged.
+
+### Compatibility and evidence boundary
+
+- With `incremental_model` absent or exactly `{ "enabled": false }`, the legacy
+  univariate path and result schema remain `1.0.0`.
+- Enabled incremental hypotheses require hypothesis schema `2.0.0`, both
+  controls inputs, and emit research result schema `2.0.0`. Core result schema
+  remains `2.0.0`; astronomy schema remains `1.0.0`.
+- A positive loss differential or adjusted threshold diagnostic does not change
+  the evidence label. This release never emits `CONFIRMATORY_PASS` and does not
+  claim causality, a complete financial baseline, stable alpha, or live-trading
+  readiness.
+
 ## [2.1.0] - 2026-08-26
 
 ### Changed
@@ -35,3 +72,4 @@ have their own versions and change only when their wire format changes.
   a paired M0-vs-M2 result, causal efficacy, or production-trading readiness.
 
 [2.1.0]: https://github.com/harryhuang0719/Destiny/releases/tag/v2.1.0
+[2.2.0]: https://github.com/harryhuang0719/Destiny/releases/tag/v2.2.0

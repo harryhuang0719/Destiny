@@ -27,8 +27,14 @@ For historical research:
 - Never auto-download or redistribute market data.
 - Require the point-in-time target schema, series catalog, preregistered
   hypothesis, and append-only trial registry.
-- Report nulls, failures, multiplicity, placebos, evidence status, and limits.
-- A valid conclusion is that no incremental astronomical information exists.
+- Treat absent/exactly-disabled `incremental_model` as the legacy univariate
+  schema-1.0 path. For enabled schema-2.0 incremental research, also require the
+  hashed long controls CSV/catalog pair.
+- Keep M0 controls and M2 controls-plus-all-astronomy on identical rows/folds;
+  report paired loss, HAC, circular block bootstrap, full-pipeline circular
+  placebo, robust max-p, Bonferroni scope, failures, evidence status, and limits.
+- A valid conclusion is that no incremental OOS loss reduction exists beyond
+  the exact supplied controls. Never turn `threshold_met` into confirmation.
 
 Never invoke an external LLM unless the user explicitly selects the provider and
 consents to sending the relevant personal data outside the machine.
@@ -66,6 +72,14 @@ Run all commands from `DESTINY_ROOT`, or invoke the `destiny` wrapper by absolut
 ./destiny history research --features /absolute/path/astro_features.csv \
   --targets /absolute/path/targets.csv --catalog /absolute/path/series_catalog.json \
   --hypothesis /absolute/path/hypothesis.json \
+  --trial-registry /absolute/path/trials.ndjson --out /absolute/path/result.json
+
+# Incremental path: both controls arguments are required together
+./destiny history research --features /absolute/path/astro_features.csv \
+  --targets /absolute/path/targets.csv --catalog /absolute/path/series_catalog.json \
+  --hypothesis /absolute/path/hypothesis.incremental.json \
+  --controls /absolute/path/controls.csv \
+  --controls-catalog /absolute/path/controls.catalog.json \
   --trial-registry /absolute/path/trials.ndjson --out /absolute/path/result.json
 ```
 

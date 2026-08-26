@@ -1,0 +1,39 @@
+{
+  "schema_version": "2.0.0",
+  "catalog_id": "destiny-synthetic-controls-example-v1",
+  "controls_file_sha256": "11e8194ec1cc09cfcb7392829b207f956adc5942f94eb22a11f7fadcbb5aba13",
+  "row_semantics": "long_point_in_time_v1",
+  "missing_marker": "empty_value_only",
+  "controls": [
+    {
+      "control_id": "lagged_return_5d",
+      "description": "Synthetic five-session lagged return available before the decision time",
+      "control_family": "lagged_target",
+      "vendor": "Destiny synthetic example",
+      "source": "deterministic documentation fixture",
+      "source_vintage": "tracked-example-v1",
+      "unit": "decimal_return",
+      "frequency": "session",
+      "calendar": "synthetic-daily-v1",
+      "exchange_timezone": "UTC",
+      "revision_policy": "non_revisioned",
+      "methodology_version": "synthetic-v1",
+      "max_staleness_hours": 168
+    },
+    {
+      "control_id": "realized_volatility_20d",
+      "description": "Synthetic trailing realized volatility available before the decision time",
+      "control_family": "volatility",
+      "vendor": "Destiny synthetic example",
+      "source": "deterministic documentation fixture",
+      "source_vintage": "tracked-example-v1",
+      "unit": "annualized_decimal_volatility",
+      "frequency": "session",
+      "calendar": "synthetic-daily-v1",
+      "exchange_timezone": "UTC",
+      "revision_policy": "non_revisioned",
+      "methodology_version": "synthetic-v1",
+      "max_staleness_hours": 168
+    }
+  ]
+}

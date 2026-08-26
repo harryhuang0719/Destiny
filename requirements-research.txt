@@ -1,1 +1,4 @@
 skyfield==1.55
+numpy==2.2.6; python_version < "3.11"
+numpy==2.4.6; python_version == "3.11"
+numpy==2.5.2; python_version >= "3.12"

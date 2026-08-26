@@ -18,5 +18,6 @@ include destiny.ps1
 recursive-include scripts *.py *.cjs
 recursive-include references *.md
 recursive-include agents *.yaml
-recursive-include examples *.md *.json *.csv
+recursive-include examples *.md *.json *.csv *.py
+recursive-include tests/fixtures *.json
 recursive-include docs *.md

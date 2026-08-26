@@ -13,14 +13,21 @@ import output_support
 import pytest
 
 
-def _engine_versions(*, skyfield: str | None) -> dict[str, str | None]:
+def _engine_versions(
+    *, skyfield: str | None, numpy_version: str | None = "expected"
+) -> dict[str, str | None]:
     return {
         "destiny_schema": output_support.SCHEMA_VERSION,
-        "destiny_package": "2.1.0",
+        "destiny_package": "2.2.0",
         "lunar_python": "1.4.8",
         "tzdata": "2026.3",
         "httpx": None,
         "skyfield": skyfield,
+        "numpy": (
+            output_support._expected_numpy_version()
+            if numpy_version == "expected"
+            else numpy_version
+        ),
         "iztro": None,
     }
 
@@ -45,7 +52,16 @@ def test_doctor_report_separates_core_research_and_all_readiness(
     monkeypatch.setattr(output_support, "ROOT_DIR", tmp_path)
     monkeypatch.setattr(output_support.shutil, "which", lambda _name: None)
     monkeypatch.setattr(
-        output_support, "engine_versions", lambda: _engine_versions(skyfield="1.55")
+        output_support,
+        "engine_versions",
+        lambda **_kwargs: _engine_versions(skyfield="1.55"),
+    )
+    monkeypatch.setattr(
+        output_support.importlib,
+        "import_module",
+        lambda name: SimpleNamespace(
+            __version__=(output_support._expected_numpy_version() if name == "numpy" else "1.55")
+        ),
     )
 
     report = output_support.doctor_report("research")
@@ -57,14 +73,32 @@ def test_doctor_report_separates_core_research_and_all_readiness(
     assert report["ready_all_engines"] is False
     assert report["readiness"] == {"core": True, "research": True, "all": False}
     assert report["checks"]["skyfield"] == {
+        "checked": True,
         "ok": True,
+        "status": "ready",
+        "installed_version": "1.55",
+        "loaded_version": "1.55",
+        "required_version": "1.55",
         "version": "1.55",
+        "import_error_type": None,
         "needed_for": "optional historical astronomy research runtime",
         "kernel_required_for_this_check": False,
+    }
+    expected_numpy = output_support._expected_numpy_version()
+    assert report["checks"]["numpy"] == {
+        "checked": True,
+        "ok": True,
+        "status": "ready",
+        "installed_version": expected_numpy,
+        "loaded_version": expected_numpy,
+        "required_version": expected_numpy,
+        "version": expected_numpy,
+        "import_error_type": None,
     }
     assert report["research_data"]["checked"] is False
     assert report["research_data"]["ready"] is None
     assert report["all_engines_checked"] is False
+    assert report["research_runtime_checked"] is True
     assert report["checks"]["node"]["checked"] is False
     assert report["checks"]["node"]["status"] == "not_checked"
     assert report["checks"]["npm"]["checked"] is False
@@ -82,7 +116,7 @@ def test_narrow_doctor_profiles_never_probe_node_or_iztro(
     monkeypatch.setattr(
         output_support,
         "engine_versions",
-        lambda: _engine_versions(skyfield="1.55"),
+        lambda **_kwargs: _engine_versions(skyfield="1.55"),
     )
 
     def forbidden_probe(*_args: object, **_kwargs: object) -> None:
@@ -99,6 +133,100 @@ def test_narrow_doctor_profiles_never_probe_node_or_iztro(
     for check_name in ("node", "npm", "iztro"):
         assert report["checks"][check_name]["checked"] is False
         assert report["checks"][check_name]["status"] == "not_checked"
+
+
+def test_core_doctor_never_probes_optional_research_modules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    metadata_queries: list[str] = []
+
+    def fake_version(name: str) -> str:
+        metadata_queries.append(name)
+        if name in {"numpy", "skyfield"}:
+            raise AssertionError("core doctor probed an optional research distribution")
+        return {
+            "destiny-agent-skill": "2.2.0",
+            "lunar_python": "1.4.8",
+            "tzdata": "2026.3",
+            "httpx": "0.28.1",
+        }[name]
+
+    def forbidden_probe(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("core doctor imported or spawned an optional runtime")
+
+    output_support.engine_versions.cache_clear()
+    monkeypatch.setattr(output_support.importlib.metadata, "version", fake_version)
+    monkeypatch.setattr(output_support.importlib, "import_module", forbidden_probe)
+    monkeypatch.setattr(output_support.shutil, "which", forbidden_probe)
+    monkeypatch.setattr(output_support.subprocess, "run", forbidden_probe)
+    try:
+        report = output_support.doctor_report("core")
+    finally:
+        output_support.engine_versions.cache_clear()
+
+    assert report["selected_mode_ready"] is True
+    assert report["research_runtime_checked"] is False
+    assert report["checks"]["numpy"]["status"] == "not_checked"
+    assert report["checks"]["skyfield"]["status"] == "not_checked"
+    assert "numpy" not in metadata_queries and "skyfield" not in metadata_queries
+
+
+@pytest.mark.parametrize(
+    ("python_version", "expected"),
+    [
+        ((3, 10), "2.2.6"),
+        ((3, 11), "2.4.6"),
+        ((3, 12), "2.5.2"),
+        ((3, 14), "2.5.2"),
+    ],
+)
+def test_numpy_marker_expectations(python_version: tuple[int, int], expected: str) -> None:
+    assert output_support._expected_numpy_version(python_version) == expected
+
+
+@pytest.mark.parametrize(
+    ("installed", "import_failure", "expected_status"),
+    [
+        (None, False, "missing"),
+        ("0.0.0", False, "version_mismatch"),
+        ("expected", True, "import_failed"),
+    ],
+)
+def test_research_doctor_fails_cleanly_for_numpy_runtime_problems(
+    installed: str | None,
+    import_failure: bool,
+    expected_status: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected = output_support._expected_numpy_version()
+    installed_version = expected if installed == "expected" else installed
+    monkeypatch.setattr(
+        output_support,
+        "engine_versions",
+        lambda **_kwargs: _engine_versions(skyfield="1.55", numpy_version=installed_version),
+    )
+
+    def fake_import(name: str) -> SimpleNamespace:
+        if name == "skyfield":
+            return SimpleNamespace(__version__="1.55")
+        if import_failure:
+            raise OSError("synthetic binary loader failure")
+        raise AssertionError("NumPy should not be imported when metadata is missing/mismatched")
+
+    monkeypatch.setattr(output_support.importlib, "import_module", fake_import)
+
+    report = output_support.doctor_report("research")
+
+    check = report["checks"]["numpy"]
+    assert report["selected_mode_ready"] is False
+    assert report["ready_core"] is True
+    assert report["ready_research"] is False
+    assert check["ok"] is False
+    assert check["status"] == expected_status
+    assert check["installed_version"] == installed_version
+    assert check["required_version"] == expected
+    if import_failure:
+        assert check["import_error_type"] == "OSError"
 
 
 def _write_node_runtime_fixture(
@@ -149,7 +277,7 @@ def _patch_healthy_core_and_node(
     monkeypatch.setattr(
         output_support,
         "engine_versions",
-        lambda: _engine_versions(skyfield="1.55"),
+        lambda **_kwargs: _engine_versions(skyfield="1.55"),
     )
     return node_envs
 

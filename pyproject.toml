@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "destiny-agent-skill"
-version = "2.1.0"
+version = "2.2.0"
 description = "Offline-first Chinese destiny engines and auditable historical astronomy research"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,9 +17,20 @@ dependencies = [
 
 [project.optional-dependencies]
 llm = ["httpx==0.28.1"]
-research = ["skyfield==1.55"]
+research = [
+  "skyfield==1.55",
+  "numpy==2.2.6; python_version < '3.11'",
+  "numpy==2.4.6; python_version == '3.11'",
+  "numpy==2.5.2; python_version >= '3.12'",
+]
 dev = ["pytest==9.1.1", "ruff==0.16.4"]
-all = ["httpx==0.28.1", "skyfield==1.55"]
+all = [
+  "httpx==0.28.1",
+  "skyfield==1.55",
+  "numpy==2.2.6; python_version < '3.11'",
+  "numpy==2.4.6; python_version == '3.11'",
+  "numpy==2.5.2; python_version >= '3.12'",
+]
 
 [project.urls]
 Homepage = "https://github.com/harryhuang0719/Destiny"

@@ -1,3 +1,4 @@
 # Preserve the user's original research blueprint byte-for-byte, including
 # Markdown hard-break spaces and its original EOF shape.
 docs/Historical_Astronomical_Data_Financial_Markets_Research_Blueprint.md -whitespace
+examples/research/*.csv text eol=lf

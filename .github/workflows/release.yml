@@ -239,6 +239,49 @@ jobs:
           DESTINY_TEST_AT="1969-07-28T12:00:00Z" \
           uv run --frozen --all-extras python -m pytest -q tests/test_historical_skyfield.py
 
+      - name: Download and verify the pinned official DE440s kernel
+        shell: bash
+        env:
+          DE440S_URL: https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de440s.bsp
+          DE440S_SHA256: c1c7feeab882263fc493a9d5a5b2ddd71b54826cdf65d8d17a76126b260a49f2
+          DE440S_SIZE: "32726016"
+        run: |
+          set -euo pipefail
+          umask 077
+          kernel_dir=$(mktemp -d "$RUNNER_TEMP/destiny-de440s.XXXXXX")
+          kernel_path="$kernel_dir/de440s.bsp"
+          curl \
+            --proto '=https' \
+            --tlsv1.2 \
+            --fail \
+            --show-error \
+            --silent \
+            --connect-timeout 15 \
+            --max-time 300 \
+            --retry 4 \
+            --retry-all-errors \
+            --retry-delay 3 \
+            --retry-max-time 600 \
+            --max-filesize "$DE440S_SIZE" \
+            --remove-on-error \
+            --output "$kernel_path" \
+            "$DE440S_URL"
+          actual_size=$(wc -c < "$kernel_path" | tr -d '[:space:]')
+          if [[ "$actual_size" != "$DE440S_SIZE" ]]; then
+            echo "DE440s size mismatch: expected $DE440S_SIZE, received $actual_size" >&2
+            exit 1
+          fi
+          actual_sha256=$(sha256sum "$kernel_path" | cut -d ' ' -f 1)
+          if [[ "$actual_sha256" != "$DE440S_SHA256" ]]; then
+            echo "DE440s SHA-256 mismatch" >&2
+            exit 1
+          fi
+          chmod 0444 "$kernel_path"
+          echo "DESTINY_TEST_DE440S=$kernel_path" >> "$GITHUB_ENV"
+
+      - name: Compare DE440s with the frozen JPL Horizons observations
+        run: uv run --frozen --all-extras python -m pytest -q tests/test_historical_horizons.py
+
       - name: Audit the frozen production dependency set
         shell: bash
         run: |

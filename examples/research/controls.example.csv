@@ -1,0 +1,5 @@
+control_id,observation_time_utc,available_at_utc,vintage_id,value
+lagged_return_5d,2025-01-02T21:00:00Z,2025-01-02T21:01:00Z,synthetic-v1,0.004
+lagged_return_5d,2025-01-03T21:00:00Z,2025-01-03T21:01:00Z,synthetic-v2,-0.002
+realized_volatility_20d,2025-01-02T21:00:00Z,2025-01-02T21:01:00Z,synthetic-v1,0.18
+realized_volatility_20d,2025-01-03T21:00:00Z,2025-01-03T21:01:00Z,synthetic-v2,0.17

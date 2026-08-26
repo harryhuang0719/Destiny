@@ -10,10 +10,12 @@ vendored and retain their own licenses:
 | iztro | 2.5.8 | Zi Wei Dou Shu chart engine | MIT |
 | httpx | 0.28.1 | Optional LLM HTTP client | BSD-3-Clause |
 | Skyfield | 1.55 | Optional JPL SPK astronomy interface | MIT |
+| NumPy | 2.2.6 (`<3.11`), 2.4.6 (`3.11`), 2.5.2 (`>=3.12`) | Optional incremental-research ridge linear algebra | BSD-3-Clause project; bundled components vary |
 
 Their transitive dependencies remain governed by their own notices. Notably,
-the installed Python environment can include Certifi under MPL-2.0 and NumPy
-under BSD-3-Clause. Inspect the installed distributions for the complete texts.
+the installed Python environment can include Certifi under MPL-2.0. NumPy wheels
+can bundle additional compatibly licensed numerical runtimes; inspect the
+installed distributions for their complete notices and license texts.
 
 JPL DE440/DE440s/DE441 kernels are external data files and are not included in
 this repository. Users obtain them from JPL/NAIF, retain the source URL and file

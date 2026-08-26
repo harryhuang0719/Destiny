@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import importlib.metadata
 import json
 import os
@@ -78,8 +79,17 @@ def _expected_iztro_version() -> str | None:
     return version if isinstance(version, str) and version else None
 
 
-@lru_cache(maxsize=1)
-def engine_versions() -> dict[str, str | None]:
+def _expected_numpy_version(python_version: tuple[int, int] | None = None) -> str:
+    version = python_version or tuple(sys.version_info[:2])
+    if version < (3, 11):
+        return "2.2.6"
+    if version == (3, 11):
+        return "2.4.6"
+    return "2.5.2"
+
+
+@lru_cache(maxsize=2)
+def engine_versions(*, include_research: bool = True) -> dict[str, str | None]:
     def version(name: str) -> str | None:
         try:
             return importlib.metadata.version(name)
@@ -93,8 +103,40 @@ def engine_versions() -> dict[str, str | None]:
         "lunar_python": version("lunar_python"),
         "tzdata": version("tzdata"),
         "httpx": version("httpx"),
-        "skyfield": version("skyfield"),
+        "skyfield": version("skyfield") if include_research else None,
+        "numpy": version("numpy") if include_research else None,
         "iztro": iztro_version,
+    }
+
+
+def _module_runtime_check(
+    module_name: str,
+    installed_version: str | None,
+    required_version: str,
+) -> dict[str, Any]:
+    status = "missing"
+    loaded_version = None
+    import_error = None
+    if installed_version is not None and installed_version != required_version:
+        status = "version_mismatch"
+    elif installed_version == required_version:
+        try:
+            module = importlib.import_module(module_name)
+            candidate = getattr(module, "__version__", None)
+            loaded_version = candidate if isinstance(candidate, str) else None
+            status = "ready" if loaded_version == required_version else "version_mismatch"
+        except Exception as exc:  # import failures include binary-loader OSError/RuntimeError
+            status = "import_failed"
+            import_error = type(exc).__name__
+    return {
+        "checked": True,
+        "ok": status == "ready",
+        "status": status,
+        "installed_version": installed_version,
+        "loaded_version": loaded_version,
+        "required_version": required_version,
+        "version": installed_version,
+        "import_error_type": import_error,
     }
 
 
@@ -158,11 +200,13 @@ def _iztro_runtime_check(
     }
 
 
-def base_result(kind: str) -> dict[str, Any]:
+def base_result(
+    kind: str, *, version_snapshot: dict[str, str | None] | None = None
+) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
         "type": kind,
-        "engine_versions": engine_versions(),
+        "engine_versions": version_snapshot or engine_versions(),
         "disclaimer": DISCLAIMER,
     }
 
@@ -250,7 +294,8 @@ def doctor_report(mode: str = "all") -> dict[str, Any]:
     if mode not in {"core", "research", "all"}:
         raise ValueError(f"unsupported doctor mode: {mode}")
 
-    versions = engine_versions()
+    research_runtime_checked = mode == "research"
+    versions = engine_versions(include_research=research_runtime_checked)
     python_ok = sys.version_info >= (3, 10)
     all_engines_checked = mode == "all"
     node_path = shutil.which("node") if all_engines_checked else None
@@ -315,6 +360,46 @@ def doctor_report(mode: str = "all") -> dict[str, Any]:
             "load_ok": None,
             "path": None,
         }
+    if research_runtime_checked:
+        numpy_check = _module_runtime_check(
+            "numpy",
+            versions.get("numpy"),
+            _expected_numpy_version(),
+        )
+        skyfield_check = _module_runtime_check(
+            "skyfield",
+            versions.get("skyfield"),
+            "1.55",
+        )
+        skyfield_check.update(
+            {
+                "needed_for": "optional historical astronomy research runtime",
+                "kernel_required_for_this_check": False,
+            }
+        )
+    else:
+        numpy_check = {
+            "checked": False,
+            "ok": None,
+            "status": "not_checked",
+            "installed_version": None,
+            "loaded_version": None,
+            "required_version": _expected_numpy_version(),
+            "version": None,
+            "import_error_type": None,
+        }
+        skyfield_check = {
+            "checked": False,
+            "ok": None,
+            "status": "not_checked",
+            "installed_version": None,
+            "loaded_version": None,
+            "required_version": "1.55",
+            "version": None,
+            "import_error_type": None,
+            "needed_for": "optional historical astronomy research runtime",
+            "kernel_required_for_this_check": False,
+        }
     checks = {
         "python": {
             "ok": python_ok,
@@ -335,18 +420,19 @@ def doctor_report(mode: str = "all") -> dict[str, Any]:
             "version": versions["httpx"],
             "needed_for": "optional --llm only",
         },
-        "skyfield": {
-            "ok": versions.get("skyfield") is not None,
-            "version": versions.get("skyfield"),
-            "needed_for": "optional historical astronomy research runtime",
-            "kernel_required_for_this_check": False,
-        },
+        "skyfield": skyfield_check,
+        "numpy": numpy_check,
         "node": node_check,
         "npm": npm_check,
         "iztro": iztro_check,
     }
     ready_core = checks["python"]["ok"] and checks["lunar_python"]["ok"] and checks["tzdata"]["ok"]
-    ready_research = ready_core and checks["skyfield"]["ok"]
+    ready_research = bool(
+        research_runtime_checked
+        and ready_core
+        and checks["skyfield"]["ok"]
+        and checks["numpy"]["ok"]
+    )
     ready_all = bool(
         all_engines_checked and ready_core and checks["node"]["ok"] and checks["iztro"]["ok"]
     )
@@ -356,13 +442,14 @@ def doctor_report(mode: str = "all") -> dict[str, Any]:
         "all": ready_all,
     }
     return {
-        **base_result("doctor"),
+        **base_result("doctor", version_snapshot=versions),
         "selected_mode": mode,
         "selected_mode_ready": readiness[mode],
         "ready_core": ready_core,
         "ready_research": ready_research,
         "ready_all_engines": ready_all,
         "all_engines_checked": all_engines_checked,
+        "research_runtime_checked": research_runtime_checked,
         "readiness": readiness,
         "research_data": {
             "checked": False,

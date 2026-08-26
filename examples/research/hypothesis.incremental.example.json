@@ -1,0 +1,64 @@
+{
+  "hypothesis_schema_version": "2.0.0",
+  "hypothesis_id": "sun-controls-incremental-example-v1",
+  "registered_at_utc": "2024-01-01T00:00:00Z",
+  "registered_commit": "replace-with-actual-commit-before-running",
+  "mode": "pseudo_oos",
+  "pre_utc_policy": "reject",
+  "features": [
+    {
+      "name": "sun_longitude_sin",
+      "direction": "two-sided",
+      "effective_period_days": 365.2422
+    },
+    {
+      "name": "sun_longitude_cos",
+      "direction": "two-sided",
+      "effective_period_days": 365.2422
+    }
+  ],
+  "train_end_utc": "2014-12-31T23:59:59Z",
+  "validation_end_utc": "2019-12-31T23:59:59Z",
+  "embargo_hours": 120,
+  "max_feature_staleness_hours": 24,
+  "placebo_runs": 999,
+  "seed": 20260826,
+  "incremental_model": {
+    "enabled": true,
+    "estimator": "ridge_linear_v1",
+    "control_ids": [
+      "lagged_return_5d",
+      "realized_volatility_20d"
+    ],
+    "alpha_grid": [
+      0.000001,
+      0.001,
+      0.1,
+      10.0
+    ],
+    "fit_intercept": true,
+    "standardization": "population_zscore_fit_rows_only",
+    "missing_data_policy": "complete_case_no_imputation",
+    "primary_loss": "squared_error",
+    "hac_lag": 4,
+    "bootstrap": {
+      "method": "circular_block_v1",
+      "runs": 999,
+      "block_length": 5,
+      "confidence_level": 0.95,
+      "seed": 2026082601
+    },
+    "full_pipeline_placebo": {
+      "method": "joint_circular_shift_v1",
+      "runs": 99,
+      "seed": 2026082602
+    },
+    "multiple_testing": {
+      "family_id": "sun-controls-example-family-v1",
+      "family_size": 1,
+      "family_index": 1,
+      "method": "bonferroni",
+      "alpha": 0.05
+    }
+  }
+}

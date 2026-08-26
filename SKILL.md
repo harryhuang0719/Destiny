@@ -3,7 +3,7 @@ name: destiny
 description: Use for Chinese calendar conversion, Bazi, Zi Wei Dou Shu, I Ching hexagram casting, compatibility, annual themes, almanac date screening, or auditable historical astronomy/financial-market research. Treat results as cultural interpretation or exploratory statistics, not medical, legal, investment, or life-decision advice; this is not a full Wen-Wang Najia implementation.
 license: MIT
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
   openclaw:
     emoji: "🔮"
     homepage: "https://github.com/harryhuang0719/Destiny"
@@ -122,17 +122,29 @@ Historical research must be falsifiable and point-in-time:
    path and do not add Swiss Ephemeris to this MIT project.
 2. Require BYOD market targets with provenance and
    `observation <= available <= decision < execution <= target_start < target_end`.
-3. Use only backward as-of feature joins.
-4. Require a preregistered hypothesis manifest and append every test access to
-   the trial registry, including failures and null results.
-5. Report chronological train/validation/test results, time-shift placebos,
-   family corrections, sample counts, and limitations.
-6. Label already-inspected historical holdouts `PSEUDO_OOS_ONLY`. Even data
+3. Choose the declared path. An absent `incremental_model` or exactly
+   `{"enabled": false}` preserves the legacy univariate schema `1.0.0`. An
+   enabled model requires hypothesis schema `2.0.0`, `--controls`, and
+   `--controls-catalog`, and emits incremental result schema `2.0.0`.
+4. Use only backward as-of joins. Incremental controls use their greatest
+   eligible observation and latest eligible vintage, with complete cases and no
+   imputation, interpolation, backfill, or fallback from a blank latest value.
+5. Keep M0 and M2 on identical rows/folds. M0 uses every declared non-constant
+   control; M2 adds every declared non-constant astronomy feature. Record
+   train-constant drops. Use the same ridge alpha grid and fit budget, tune on
+   train→validation, refit on train+validation, then open test once.
+6. Report paired loss, declared HAC, centered-null circular block bootstrap, and
+   the full M2-pipeline joint circular-shift placebo over nonzero `C_N` shifts.
+   Qualify max-p robust/Bonferroni results as conditional on the supplied
+   baseline and the truth/completeness of the declared family; a local runner
+   cannot certify global family completeness or index uniqueness.
+7. Append every test access to the trial registry, including failures and nulls.
+   Label already-inspected historical holdouts `PSEUDO_OOS_ONLY`. Even data
    declared as post-registration remains `PROSPECTIVE_DECLARED_UNVERIFIED`
    until an independent timestamp/sealing mechanism exists.
-7. In this MVP it is valid to conclude that no stable preregistered univariate
-   association exists. Do not call that an incremental-information test until
-   financial controls and paired M0-vs-M2 models are implemented.
+8. Preserve null conclusions. It is valid to find no stable univariate
+   association or no incremental OOS loss reduction beyond the declared M0.
+   Never emit or infer `CONFIRMATORY_PASS` from a threshold diagnostic.
 
 Never describe association as causation, an astronomical reconstruction as
 historically available vintage data, an index/indicator as a tradable asset, or
@@ -140,11 +152,11 @@ an exploratory backtest as investment advice.
 
 ## Version compatibility
 
-This Skill source version is `2.1.0`; it becomes a published release only after
+This Skill source version is `2.2.0`; it becomes a published release only after
 the matching tag workflow succeeds. Package/Skill versions are independent from
-wire formats: the deterministic result schema remains `2.0.0`, while astronomy
-and historical-research schemas remain `1.0.0`. Do not infer a schema upgrade
-from the package version.
+wire formats: deterministic results remain schema `2.0.0`, astronomy remains
+`1.0.0`, legacy research remains `1.0.0`, and enabled incremental research uses
+`2.0.0`. Do not infer a schema upgrade from the package version alone.
 
 ## Output contract
 

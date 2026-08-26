@@ -1,7 +1,7 @@
 {
   "hypothesis_id": "sun-cycle-example-v1",
-  "registered_at_utc": "REPLACE-WITH-REGISTRATION-TIMESTAMP",
-  "registered_commit": "REPLACE-WITH-GIT-COMMIT",
+  "registered_at_utc": "2024-01-01T00:00:00Z",
+  "registered_commit": "replace-with-actual-commit-before-running",
   "mode": "pseudo_oos",
   "pre_utc_policy": "reject",
   "features": [
