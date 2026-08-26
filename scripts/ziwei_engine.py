@@ -214,18 +214,23 @@ if __name__ == "__main__":
     parser.add_argument("month", type=int)
     parser.add_argument("day", type=int)
     parser.add_argument("hour", type=int)
-    parser.add_argument("gender", nargs="?", default="男", choices=("男", "女"))
+    parser.add_argument("gender", nargs="?", default="男")
     parser.add_argument("--minute", type=int, default=0)
     parser.add_argument("--second", type=int, default=0)
     parser.add_argument("--text", action="store_true")
     args = parser.parse_args()
+    gender = {"1": "男", "0": "女", "male": "男", "female": "女"}.get(
+        args.gender.lower(), args.gender
+    )
+    if gender not in ("男", "女"):
+        parser.error("gender 必须是 男/女、1/0 或 male/female")
     try:
         result = generate_ziwei(
             args.year,
             args.month,
             args.day,
             args.hour,
-            args.gender,
+            gender,
             args.minute,
             args.second,
         )

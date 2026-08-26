@@ -26,6 +26,7 @@ def run_cli(*args: str, input_text: str | None = None) -> subprocess.CompletedPr
         input=input_text,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         env=env,
         timeout=30,
     )
@@ -63,6 +64,7 @@ def test_comprehensive_no_llm_has_no_interpretation_even_with_fake_key() -> None
         cwd=ROOT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         env=env,
         timeout=30,
     )
@@ -173,7 +175,7 @@ def test_ziwei_bridge_is_utf8_under_legacy_locale() -> None:
         "LC_ALL": "C",
     }
     process = subprocess.run(
-        [sys.executable, str(CLI), "ziwei", "2000", "8", "16", "23", "男", "--json"],
+        [sys.executable, str(CLI), "ziwei", "2000", "8", "16", "23", "1", "--json"],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -206,7 +208,7 @@ def test_question_stdin_size_limit_is_enforced_before_unbounded_read() -> None:
         ("calendar_engine.py", ["2026", "8", "26"]),
         ("bazi_engine.py", ["1990", "1", "15", "14", "1"]),
         ("iching_engine.py", ["manual", "789978"]),
-        ("ziwei_engine.py", ["2000", "8", "16", "23", "男"]),
+        ("ziwei_engine.py", ["2000", "8", "16", "23", "1"]),
     ],
 )
 def test_standalone_engines_force_utf8_under_legacy_locale(script: str, args: list[str]) -> None:
@@ -243,6 +245,7 @@ def test_standalone_iching_stdin_is_bounded() -> None:
         input="问" * 20_001,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=30,
         check=False,
     )
