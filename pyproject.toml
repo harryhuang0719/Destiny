@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "destiny-agent-skill"
-version = "2.0.0"
+version = "2.1.0"
 description = "Offline-first Chinese destiny engines and auditable historical astronomy research"
 readme = "README.md"
 requires-python = ">=3.10"

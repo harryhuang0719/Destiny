@@ -3,6 +3,7 @@ name: destiny
 description: Use for Chinese calendar conversion, Bazi, Zi Wei Dou Shu, I Ching hexagram casting, compatibility, annual themes, almanac date screening, or auditable historical astronomy/financial-market research. Treat results as cultural interpretation or exploratory statistics, not medical, legal, investment, or life-decision advice; this is not a full Wen-Wang Najia implementation.
 license: MIT
 metadata:
+  version: "2.1.0"
   openclaw:
     emoji: "🔮"
     homepage: "https://github.com/harryhuang0719/Destiny"
@@ -25,12 +26,37 @@ the current working directory or a user-specific absolute path.
 - Codex includes the skill's file location in its skill catalog; use that parent directory.
 
 Run the platform launcher before the first calculation: `DESTINY_ROOT/destiny`
-on macOS/Linux, `DESTINY_ROOT/destiny.ps1` or `destiny.cmd` on Windows. Invoke
-`doctor --json`. If the environment is missing, install only when the user asked
-to deploy/setup; use `python3 .../scripts/bootstrap.py` on macOS/Linux or
-`py -3 ...\scripts\bootstrap.py` on Windows. Add `--research`, `--llm`, or
-`--dev` only for the capability actually requested. Never download a JPL kernel
-or market data implicitly.
+on macOS/Linux, `DESTINY_ROOT/destiny.ps1` or `destiny.cmd` on Windows. Select
+the narrowest health profile: `doctor --core --json` for calendar/Bazi/I Ching,
+`doctor --research --json` for the Skyfield research runtime, or
+`doctor --all --json` when Zi Wei is needed. Plain `doctor` remains equivalent
+to `--all`; the research check never downloads or validates a JPL kernel.
+Core/research profiles do not probe or spawn Node/iztro and report those checks
+as `not_checked`. All mode strictly verifies the pinned iztro metadata and a
+static `require('iztro')` smoke in a minimal OS-only environment.
+
+If the environment is missing, install only when the user asked to deploy/setup;
+use `python3 .../scripts/bootstrap.py --installer auto` on macOS/Linux or
+`py -3 ...\scripts\bootstrap.py --installer auto` on Windows. Auto mode uses a
+valid frozen uv lock when uv is available and otherwise falls back to pip with an
+explanation. Use `--installer uv` or `--installer pip` only when the user requests
+that path. Add `--research`, `--llm`, or `--dev` only for the capability actually
+requested. Never download a JPL kernel or market data implicitly.
+
+The bootstrap summary exposes a machine-safe `next_argv` string array. Pass it
+directly to the process runner without shell joining or interpolation; `next` is
+the quoted human-readable display form. `--skip-node` only skips this run's npm
+installation and does not remove an existing `node_modules` directory.
+
+Bootstrap gives pip/uv an exact operational environment allowlist by default;
+unrelated secrets, injection settings, and private-index environment variables
+are not inherited. This is not config-file isolation: retained OS directories
+can still let pip/uv discover user-level configuration files. Add
+`--allow-private-index-env` only when the user explicitly asks to forward the
+parent process's private-index environment variables. That opt-in forwards only
+the enumerated pip/uv variables and named
+`UV_INDEX_<NAME>_USERNAME|PASSWORD` credentials, never the complete parent
+environment.
 
 ## Privacy and safe execution
 
@@ -111,6 +137,14 @@ Historical research must be falsifiable and point-in-time:
 Never describe association as causation, an astronomical reconstruction as
 historically available vintage data, an index/indicator as a tradable asset, or
 an exploratory backtest as investment advice.
+
+## Version compatibility
+
+This Skill source version is `2.1.0`; it becomes a published release only after
+the matching tag workflow succeeds. Package/Skill versions are independent from
+wire formats: the deterministic result schema remains `2.0.0`, while astronomy
+and historical-research schemas remain `1.0.0`. Do not infer a schema upgrade
+from the package version.
 
 ## Output contract
 

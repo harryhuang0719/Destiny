@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-try:  # package install
+if __package__:  # package install
     from .llm_provider import ALLOWED_ENV_KEYS
     from .timezone_util import (
         get_longitude,
@@ -19,7 +19,7 @@ try:  # package install
         tzdata_version,
         validate_datetime,
     )
-except ImportError:  # direct scripts/cli_support.py import
+else:  # direct scripts/cli_support.py import
     from llm_provider import ALLOWED_ENV_KEYS
     from timezone_util import (
         get_longitude,
@@ -114,6 +114,7 @@ def _default_flags() -> dict[str, Any]:
         "question_stdin": False,
         "question_file": None,
         "cities": False,
+        "doctor_mode": None,
     }
 
 
@@ -157,6 +158,11 @@ def _parse_global_flags(argv: list[str]) -> tuple[dict[str, Any], list[str]]:
         "--question-stdin": "question_stdin",
         "--cities": "cities",
     }
+    doctor_mode_flags = {
+        "--core": "core",
+        "--research": "research",
+        "--all": "all",
+    }
     while i < len(argv):
         token = argv[i]
         if token == "--":
@@ -164,6 +170,11 @@ def _parse_global_flags(argv: list[str]) -> tuple[dict[str, Any], list[str]]:
             break
         if token in bool_flags:
             flags[bool_flags[token]] = True
+        elif token in doctor_mode_flags:
+            mode = doctor_mode_flags[token]
+            if flags["doctor_mode"] is not None:
+                raise CliError("--core、--research 与 --all 只能选择一个")
+            flags["doctor_mode"] = mode
         elif token == "--bazi":
             if i + 5 >= len(argv):
                 raise CliError("--bazi 需要 Y M D H G 五个值")

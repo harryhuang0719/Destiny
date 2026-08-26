@@ -15,7 +15,7 @@ import sys
 from datetime import datetime
 from typing import Any
 
-try:  # package install
+if __package__:  # package install
     from .bazi_engine import format_bazi_text, generate_bazi
     from .calendar_engine import get_jie_qi_around, lunar_to_solar, solar_to_lunar_info
     from .cli_support import (
@@ -68,7 +68,7 @@ try:  # package install
         list_cities,
     )
     from .ziwei_engine import format_ziwei_text, generate_ziwei
-except ImportError:  # direct scripts/destiny_analyzer.py execution
+else:  # direct scripts/destiny_analyzer.py execution
     from bazi_engine import format_bazi_text, generate_bazi
     from calendar_engine import get_jie_qi_around, lunar_to_solar, solar_to_lunar_info
     from cli_support import (
@@ -583,6 +583,8 @@ async def main(argv: list[str] | None = None) -> int:
 
         return history_main(argv[1:])
     flags, args = _parse_global_flags(argv[1:])
+    if flags["doctor_mode"] is not None and command != "doctor":
+        raise CliError("--core、--research 与 --all 仅适用于 doctor")
     if flags["env_file"]:
         load_env_file(flags["env_file"])
     if flags["cities"] or command == "--cities":
@@ -603,9 +605,11 @@ async def main(argv: list[str] | None = None) -> int:
     minute, second = flags["minute"], flags["second"]
 
     if command == "doctor":
-        result = doctor_report()
+        if args:
+            raise CliError("doctor 不接受位置参数；请使用 --core、--research 或 --all")
+        result = doctor_report(flags["doctor_mode"] or "all")
         _print_result(result, flags["json"])
-        return 0 if result["ready_all_engines"] else 1
+        return 0 if result["selected_mode_ready"] else 1
 
     if command == "calendar":
         year, month, day = _ints(args, 3, "calendar Y M D [H]")

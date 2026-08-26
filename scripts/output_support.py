@@ -12,9 +12,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-try:  # package install
+if __package__:  # package install
     from . import llm_provider
-except ImportError:  # direct scripts/output_support.py import
+else:  # direct scripts/output_support.py import
     import llm_provider
 
 
@@ -22,6 +22,60 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 SCHEMA_VERSION = "2.0.0"
 DISCLAIMER = "传统文化与娱乐参考；不构成医疗、法律、投资或重大人生决策建议。"
+MAX_NODE_PACKAGE_JSON_BYTES = 128 * 1024
+
+_NODE_ENV_KEYS = frozenset(
+    {
+        "APPDATA",
+        "COMSPEC",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "LOCALAPPDATA",
+        "PATH",
+        "PATHEXT",
+        "PROGRAMDATA",
+        "SYSTEMDRIVE",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "USERPROFILE",
+        "WINDIR",
+    }
+)
+
+
+def _node_child_env() -> dict[str, str]:
+    return {key: value for key, value in os.environ.items() if key.upper() in _NODE_ENV_KEYS}
+
+
+def _read_small_json_object(path: Path) -> tuple[dict[str, Any] | None, str | None]:
+    try:
+        if not path.is_file():
+            return None, "missing"
+        with path.open("rb") as stream:
+            raw = stream.read(MAX_NODE_PACKAGE_JSON_BYTES + 1)
+        if len(raw) > MAX_NODE_PACKAGE_JSON_BYTES:
+            return None, "package_json_too_large"
+        value = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None, "invalid_package_json"
+    if not isinstance(value, dict):
+        return None, "invalid_package_json"
+    return value, None
+
+
+def _expected_iztro_version() -> str | None:
+    lock, _error = _read_small_json_object(ROOT_DIR / "package-lock.json")
+    if lock is None:
+        return None
+    try:
+        version = lock["packages"]["node_modules/iztro"]["version"]
+    except (KeyError, TypeError):
+        return None
+    return version if isinstance(version, str) and version else None
 
 
 @lru_cache(maxsize=1)
@@ -32,18 +86,75 @@ def engine_versions() -> dict[str, str | None]:
         except importlib.metadata.PackageNotFoundError:
             return None
 
-    iztro_version = None
-    try:
-        lock = json.loads((ROOT_DIR / "package-lock.json").read_text(encoding="utf-8"))
-        iztro_version = lock["packages"]["node_modules/iztro"]["version"]
-    except (OSError, KeyError, json.JSONDecodeError):
-        pass
+    iztro_version = _expected_iztro_version()
     return {
         "destiny_schema": SCHEMA_VERSION,
+        "destiny_package": version("destiny-agent-skill"),
         "lunar_python": version("lunar_python"),
         "tzdata": version("tzdata"),
         "httpx": version("httpx"),
+        "skyfield": version("skyfield"),
         "iztro": iztro_version,
+    }
+
+
+def _iztro_runtime_check(
+    node_path: str | None, node_ok: bool, expected_version: str | None
+) -> dict[str, Any]:
+    package_json = ROOT_DIR / "node_modules" / "iztro" / "package.json"
+    metadata, metadata_error = _read_small_json_object(package_json)
+    installed_name = metadata.get("name") if metadata else None
+    installed_version = metadata.get("version") if metadata else None
+    metadata_ok = (
+        installed_name == "iztro"
+        and isinstance(installed_version, str)
+        and expected_version is not None
+        and installed_version == expected_version
+    )
+
+    if metadata_error:
+        status = metadata_error
+    elif installed_name != "iztro":
+        status = "name_mismatch"
+    elif expected_version is None:
+        status = "pinned_version_unavailable"
+    elif installed_version != expected_version:
+        status = "version_mismatch"
+    elif not node_ok or node_path is None:
+        status = "node_unavailable"
+    else:
+        status = "require_failed"
+
+    load_ok = False
+    if metadata_ok and node_ok and node_path:
+        try:
+            process = subprocess.run(
+                [node_path, "-e", "require('iztro')"],
+                cwd=ROOT_DIR,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=10,
+                env=_node_child_env(),
+            )
+            load_ok = process.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            load_ok = False
+        if load_ok:
+            status = "ready"
+
+    return {
+        "checked": True,
+        "ok": metadata_ok and load_ok,
+        "status": status,
+        "expected_name": "iztro",
+        "expected_version": expected_version,
+        "installed_name": installed_name if isinstance(installed_name, str) else None,
+        "installed_version": installed_version if isinstance(installed_version, str) else None,
+        "version": installed_version if isinstance(installed_version, str) else None,
+        "metadata_ok": metadata_ok,
+        "load_ok": load_ok,
+        "path": str(package_json),
     }
 
 
@@ -73,7 +184,7 @@ def print_help() -> None:
   destiny liunian Y M D H [G] --year YYYY [--json]
   destiny zeji 活动 --month YYYY-MM [--bazi Y M D H G] [--json]
   destiny history --help
-  destiny doctor [--json]
+  destiny doctor [--core|--research|--all] [--json]
   destiny --cities
 
 核心默认离线。启用外部解读时必须显式提供:
@@ -135,19 +246,18 @@ def _print_result(result: dict[str, Any], json_mode: bool) -> None:
     print(f"\n⚠️ {DISCLAIMER}")
 
 
-def doctor_report() -> dict[str, Any]:
+def doctor_report(mode: str = "all") -> dict[str, Any]:
+    if mode not in {"core", "research", "all"}:
+        raise ValueError(f"unsupported doctor mode: {mode}")
+
+    versions = engine_versions()
     python_ok = sys.version_info >= (3, 10)
-    node_path = shutil.which("node")
-    npm_path = shutil.which("npm")
-    iztro_path = ROOT_DIR / "node_modules" / "iztro" / "package.json"
+    all_engines_checked = mode == "all"
+    node_path = shutil.which("node") if all_engines_checked else None
+    npm_path = shutil.which("npm") if all_engines_checked else None
     node_version = None
     node_ok = False
-    if node_path:
-        child_env = {
-            key: os.environ[key]
-            for key in ("PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT")
-            if key in os.environ
-        }
+    if all_engines_checked and node_path:
         try:
             process = subprocess.run(
                 [node_path, "--version"],
@@ -155,12 +265,56 @@ def doctor_report() -> dict[str, Any]:
                 text=True,
                 timeout=10,
                 check=False,
-                env=child_env,
+                env=_node_child_env(),
             )
             node_version = process.stdout.strip().lstrip("v")
             node_ok = process.returncode == 0 and int(node_version.split(".", 1)[0]) >= 18
         except (OSError, ValueError, subprocess.TimeoutExpired):
             node_ok = False
+    if all_engines_checked:
+        iztro_check = _iztro_runtime_check(node_path, node_ok, _expected_iztro_version())
+        node_check = {
+            "checked": True,
+            "ok": node_ok,
+            "status": "ready" if node_ok else "unavailable",
+            "path": node_path,
+            "version": node_version,
+            "required": ">=18",
+        }
+        npm_check = {
+            "checked": True,
+            "ok": bool(npm_path),
+            "status": "available" if npm_path else "unavailable",
+            "path": npm_path,
+        }
+    else:
+        node_check = {
+            "checked": False,
+            "ok": None,
+            "status": "not_checked",
+            "path": None,
+            "version": None,
+            "required": ">=18",
+        }
+        npm_check = {
+            "checked": False,
+            "ok": None,
+            "status": "not_checked",
+            "path": None,
+        }
+        iztro_check = {
+            "checked": False,
+            "ok": None,
+            "status": "not_checked",
+            "expected_name": "iztro",
+            "expected_version": versions.get("iztro"),
+            "installed_name": None,
+            "installed_version": None,
+            "version": None,
+            "metadata_ok": None,
+            "load_ok": None,
+            "path": None,
+        }
     checks = {
         "python": {
             "ok": python_ok,
@@ -168,32 +322,52 @@ def doctor_report() -> dict[str, Any]:
             "required": ">=3.10",
         },
         "lunar_python": {
-            "ok": engine_versions()["lunar_python"] is not None,
-            "version": engine_versions()["lunar_python"],
+            "ok": versions["lunar_python"] is not None,
+            "version": versions["lunar_python"],
         },
         "tzdata": {
-            "ok": engine_versions()["tzdata"] == "2026.3",
-            "version": engine_versions()["tzdata"],
+            "ok": versions["tzdata"] == "2026.3",
+            "version": versions["tzdata"],
             "required": "2026.3",
         },
         "httpx": {
             "ok": llm_provider.HAS_HTTPX,
-            "version": engine_versions()["httpx"],
+            "version": versions["httpx"],
             "needed_for": "optional --llm only",
         },
-        "node": {"ok": node_ok, "path": node_path, "version": node_version, "required": ">=18"},
-        "npm": {"ok": bool(npm_path), "path": npm_path},
-        "iztro": {
-            "ok": iztro_path.is_file(),
-            "version": engine_versions()["iztro"],
-            "path": str(iztro_path),
+        "skyfield": {
+            "ok": versions.get("skyfield") is not None,
+            "version": versions.get("skyfield"),
+            "needed_for": "optional historical astronomy research runtime",
+            "kernel_required_for_this_check": False,
         },
+        "node": node_check,
+        "npm": npm_check,
+        "iztro": iztro_check,
     }
     ready_core = checks["python"]["ok"] and checks["lunar_python"]["ok"] and checks["tzdata"]["ok"]
-    ready_all = ready_core and checks["node"]["ok"] and checks["iztro"]["ok"]
+    ready_research = ready_core and checks["skyfield"]["ok"]
+    ready_all = bool(
+        all_engines_checked and ready_core and checks["node"]["ok"] and checks["iztro"]["ok"]
+    )
+    readiness = {
+        "core": ready_core,
+        "research": ready_research,
+        "all": ready_all,
+    }
     return {
         **base_result("doctor"),
+        "selected_mode": mode,
+        "selected_mode_ready": readiness[mode],
         "ready_core": ready_core,
+        "ready_research": ready_research,
         "ready_all_engines": ready_all,
+        "all_engines_checked": all_engines_checked,
+        "readiness": readiness,
+        "research_data": {
+            "checked": False,
+            "ready": None,
+            "reason": "JPL kernel availability is command-specific and is not checked by doctor.",
+        },
         "checks": checks,
     }

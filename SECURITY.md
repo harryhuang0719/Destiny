@@ -17,4 +17,11 @@ records, API keys, market-data credentials, or proprietary datasets in a public 
 
 ## Supported versions
 
-Security fixes target the latest `main` branch until versioned releases are published.
+Security fixes always target `main`. Once a `2.1.x` GitHub Release is actually
+published, the latest release in that line is supported as well; older releases
+should upgrade before reporting a version-specific issue.
+
+Only download versioned artifacts after they appear on this repository's GitHub
+Releases page. Verify the accompanying SHA-256 checksum before installation and,
+when provenance is published, check it with
+`gh attestation verify <artifact> --repo harryhuang0719/Destiny`.

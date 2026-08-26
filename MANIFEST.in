@@ -4,6 +4,7 @@ include CLAUDE.md
 include LICENSE
 include SECURITY.md
 include CONTRIBUTING.md
+include CHANGELOG.md
 include THIRD_PARTY_NOTICES.md
 include .env.example
 include package.json

@@ -3,6 +3,7 @@
 ### 先排盘，再说人话；先做实验，再谈星辰。
 
 [![CI](https://github.com/harryhuang0719/Destiny/actions/workflows/ci.yml/badge.svg)](https://github.com/harryhuang0719/Destiny/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/harryhuang0719/Destiny)](https://github.com/harryhuang0719/Destiny/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://www.python.org/)
 
@@ -20,7 +21,7 @@ Destiny 是一个离线优先、可审计的传统命理计算 Skill，也是一
 
 > **算盘先响，翻译官后开口。** 排盘由确定性代码完成；自然语言只是解释层，不参与偷偷改盘。
 
-同样，历史研究必须有能力得到“这个 MVP 没有发现稳定的预注册单变量关联”这个结论。否则它不是研究，只是一台会讲故事的 p-hacking 机器。带金融控制变量的 M0-vs-M2 增量检验仍属于下一阶段，首版不会偷换概念。
+同样，历史研究必须有能力得到“这个 MVP 没有发现稳定的预注册单变量关联”这个结论。否则它不是研究，只是一台会讲故事的 p-hacking 机器。带金融控制变量的 M0-vs-M2 增量检验仍属于下一阶段，当前版本不会偷换概念。
 
 > [!CAUTION]
 > Destiny 用于传统文化、娱乐与可证伪的历史关联研究。它不提供医疗、法律、投资建议，也不替任何人做婚姻、职业或人生决定。历史相关性不等于因果，更不等于可交易利润。
@@ -30,96 +31,166 @@ Destiny 是一个离线优先、可审计的传统命理计算 Skill，也是一
 需要 Python 3.10+。紫微需要 Node.js 18+。
 
 ```bash
-git clone https://github.com/harryhuang0719/Destiny.git
+git clone --depth 1 https://github.com/harryhuang0719/Destiny.git
 cd Destiny
-python3 scripts/bootstrap.py
-./destiny doctor --json
+python3 scripts/bootstrap.py --installer auto
+./destiny doctor --all --json
 ./destiny bazi 1990 1 15 14 1 --json
 ```
 
-Bootstrap 会在仓库内创建 `.venv`、固定安装 `lunar-python==1.4.8` 与
-`tzdata==2026.3`，并用 `npm ci` 安装锁定的 `iztro==2.5.8`。不会安装
-系统软件，不会下载 JPL kernel，也不会下载市场数据。
+这条命令跟随 `main`，在 `v2.1.0` 出现在
+[Releases](https://github.com/harryhuang0719/Destiny/releases) 后，生产部署可把
+clone 改成 `git clone --branch v2.1.0 --depth 1 ...` 来固定版本。
+
+`--installer auto` 是默认值：本机有 uv 且 `uv lock --check` 通过时，使用
+`uv sync --frozen`；否则说明原因并回退 pip。`--installer uv` 会强制使用完整
+lock，条件不满足就失败；`--installer pip` 是最通用的回退路径，安装项目中
+固定的直接依赖。默认环境是仓库内 `.venv`，也可用 `--venv <路径>` 指定
+独立环境；未指定 `--skip-node` 时再用 `npm ci` 安装锁定的
+`iztro==2.5.8`。它们都不会安装系统软件、下载 JPL kernel 或下载市场数据。
+
+Bootstrap 最后的 JSON summary 同时给出 `next` 和 `next_argv`。前者方便人类
+复制；agent 或程序应把 `next_argv` 字符串数组直接传给 subprocess，不要重新
+拼 shell 字符串。数组会指向实际 venv，并按本次安装能力选择
+`doctor --core|--research|--all --json`。
+
+### 私有 Python index 环境变量：必须显式打开
+
+默认情况下，bootstrap 给 pip/uv 子进程的是精确环境变量 allowlist，只保留
+运行所需的 OS、代理、证书、cache/offline 等环境项；无关 API key、云/数据库
+凭据、SSH agent、Python/Node 注入变量和私有 index 环境变量都不会继承。
+这不是 config-file 隔离：为保证工具正常运行而保留的 `HOME` / `APPDATA` /
+`USERPROFILE`，仍可能让 pip/uv 发现用户级 `pip.conf` / `uv.toml`。确实要继承
+父进程的私有源环境变量时：
+
+```bash
+python3 scripts/bootstrap.py --installer auto --allow-private-index-env
+```
+
+这个 opt-in 也不会传整个父环境，只额外允许：
+
+- `PIP_{CLIENT_CERT,EXTRA_INDEX_URL,FIND_LINKS,INDEX_URL,KEYRING_PROVIDER,NO_INDEX,TRUSTED_HOST}`；
+- `UV_{DEFAULT_INDEX,EXTRA_INDEX_URL,FIND_LINKS,INDEX,INDEX_STRATEGY,INDEX_URL,KEYRING_PROVIDER,NO_INDEX}`；
+- 命名 index 的 `UV_INDEX_<NAME>_{USERNAME,PASSWORD}`。
+
+不在默认 operational allowlist 或上述 opt-in 集合内的 `PIP_*` / `UV_*`
+变量（包括其他 token 与 publish 凭据）仍被丢弃。Summary 里的
+`allow_private_index_env` 会记录这次安装是否显式打开了该能力。
 
 需要额外能力时再加：
 
 ```bash
 # 外部 LLM 适配器
-python3 scripts/bootstrap.py --llm
+python3 scripts/bootstrap.py --installer auto --llm
 
 # JPL/Skyfield 历史天文研究
-python3 scripts/bootstrap.py --research
+python3 scripts/bootstrap.py --installer auto --research
 
 # 开发测试（可组合）
-python3 scripts/bootstrap.py --llm --research --dev
+python3 scripts/bootstrap.py --installer auto --llm --research --dev
 ```
 
 没有 Node、只想用历法/八字/易经：
 
 ```bash
-python3 scripts/bootstrap.py --skip-node
+python3 scripts/bootstrap.py --installer auto --skip-node
 ```
+
+`--skip-node` 只表示本次不运行 `npm ci`，不会删除此前已有的
+`node_modules`；因此在已经完整安装过的仓库里，紫微仍可能可用。
 
 Windows：
 
 ```powershell
-py -3 scripts\bootstrap.py --llm --research
-.\destiny.ps1 doctor --json
+py -3 scripts\bootstrap.py --installer auto --llm --research
+.\destiny.ps1 doctor --all --json
 .\destiny.ps1 bazi 1990 1 15 14 1 --json
 ```
 
 也可以使用 `destiny.cmd`。
 
-偏好完全冻结的 Python transitive resolution 时，可使用仓库内 `uv.lock`：
+也可以直接运行包管理器；偏好完全冻结的 Python transitive resolution 时：
 
 ```bash
 uv sync --frozen --all-extras
 npm ci --ignore-scripts
 ```
 
-`pip install .` / 构建 wheel 会安装 `destiny` Python CLI、核心历法与可选
-Skyfield 研究层；wheel 不会安装 npm 的 iztro，因此 wheel 环境中的紫微会
-明确退出 3。需要完整 Skill 与紫微时，请使用 Git clone + bootstrap 流程。
+`pip install .` / 构建 wheel 会安装 `destiny` Python CLI 与核心历法；
+`pip install ".[research]"` 再加入 Skyfield。wheel 不会安装 npm 的 iztro，
+因此 wheel 环境中的紫微会明确退出 3；这是有意的能力边界，不是静默降级。
+需要完整 Skill 与紫微时，请使用 Git clone + bootstrap 流程。
 
-## 给 Claude、Codex 与 OpenClaw 安装
+### Doctor 到底检查什么？
 
-仓库根目录就是一个标准 `SKILL.md`，不需要复制三份易漂移的提示词。
+```bash
+./destiny doctor --core --json       # Python、lunar-python、固定 tzdata
+./destiny doctor --research --json   # core + Skyfield；不下载/检查 JPL kernel
+./destiny doctor --all --json        # core + Node 18+ + 版本吻合且可加载的 iztro
+```
+
+三种模式互斥；未指定模式时等价于 `--all`。选中 profile 未就绪时退出 1，
+JSON 的 `selected_mode` 与 `selected_mode_ready` 可供任何 agent 稳定判断。
+`--core` 和 `--research` 不探测或启动 Node/iztro，相应 checks 明确标为
+`status: "not_checked"`；默认/`--all` 才校验锁定版本，并在最小 OS 环境中执行
+带超时的静态 `require('iztro')` smoke，metadata 或加载任一失败都视为未就绪。
+
+## 给 Claude、Codex、OpenClaw 或任何 Agent 安装
+
+仓库根目录就是唯一的 `SKILL.md`。支持 Skill discovery 的工具把仓库放进
+自己的 Skill 目录即可；不支持的工具也只需 clone 到任意目录，再让 agent
+先读 `SKILL.md`。`v2.1.0` tag 发布后推荐固定它以便复现；发布前或需要最新
+开发版本时使用 `main`。
+
+### 任何 Agent 都能照做的协议
+
+```bash
+git clone --depth 1 \
+  https://github.com/harryhuang0719/Destiny.git /path/to/destiny
+python3 /path/to/destiny/scripts/bootstrap.py --installer auto
+/path/to/destiny/destiny doctor --core --json
+```
+
+然后给 agent 这段短指令：
+
+```text
+先完整阅读 /path/to/destiny/SKILL.md，把它的父目录作为 DESTINY_ROOT。
+按任务选择 doctor --core、--research 或 --all；计算时优先 --json --no-llm，
+不要自行下载 JPL kernel、市场数据，也不要把出生资料发送给外部模型。
+```
 
 ### Codex
 
-Codex 当前从个人目录 `~/.agents/skills` 和项目目录 `.agents/skills` 发现 Skill。个人安装：
+个人安装用 `~/.agents/skills/destiny`，项目安装用
+`.agents/skills/destiny`：
 
 ```bash
-git clone https://github.com/harryhuang0719/Destiny.git ~/.agents/skills/destiny
-python3 ~/.agents/skills/destiny/scripts/bootstrap.py --research
+git clone --depth 1 \
+  https://github.com/harryhuang0719/Destiny.git ~/.agents/skills/destiny
+python3 ~/.agents/skills/destiny/scripts/bootstrap.py --installer auto
 ```
 
-Windows 用 `py -3 ...\scripts\bootstrap.py --research`，运行时使用
-`destiny.ps1` 或 `destiny.cmd`。
-
-然后说：
-
-```text
-$destiny 帮我把这个公历时间转换成农历，并解释你采用的时间口径
-```
-
-也可以让内置 `$skill-installer` 从这个 GitHub 仓库安装。参见 [OpenAI 官方 Skill 文档](https://developers.openai.com/codex/skills/)。
+然后说：`$destiny 帮我把这个公历时间转换成农历，并解释时间口径`。
+也可以让 `$skill-installer` 从本仓库安装。参见
+[OpenAI 官方 Skill 文档](https://developers.openai.com/codex/skills/)。
 
 ### Claude Code
 
 ```bash
-git clone https://github.com/harryhuang0719/Destiny.git ~/.claude/skills/destiny
-python3 ~/.claude/skills/destiny/scripts/bootstrap.py --research
+git clone --depth 1 \
+  https://github.com/harryhuang0719/Destiny.git ~/.claude/skills/destiny
+python3 ~/.claude/skills/destiny/scripts/bootstrap.py --installer auto
 ```
 
-Windows 同样用 `py -3` bootstrap 与 `destiny.ps1` / `destiny.cmd`。
-
-然后使用 `/destiny`，或直接描述八字、紫微、历法、起卦、历史天文查询等需求。Claude Code 的个人与项目 Skill 路径见 [官方文档](https://code.claude.com/docs/en/skills)。
+项目级目录是 `.claude/skills/destiny`。然后使用 `/destiny`，或直接描述
+八字、紫微、历法、起卦、历史天文查询等需求。参见
+[Claude Code Skill 文档](https://code.claude.com/docs/en/skills)。
 
 ### OpenClaw
 
-OpenClaw 的 Git 安装会寻找仓库根部的 `SKILL.md`。以下命令默认安装到
-当前 active workspace；加 `--global` 才会安装到共享 managed skill 目录：
+以下命令从 `main` 安装到当前 active workspace；`--global` 才会安装到
+共享 managed skill 目录。等 Release 页面出现 `v2.1.0` 后，将 `main` 换成
+`v2.1.0` 即可固定版本：
 
 ```bash
 openclaw skills install git:harryhuang0719/Destiny@main
@@ -128,21 +199,34 @@ openclaw skills install git:harryhuang0719/Destiny@main --global
 openclaw skills info destiny
 ```
 
-从 `info` 显示的安装目录运行：
+从 `info` 显示的目录运行
+`python3 /显示出来的路径/scripts/bootstrap.py --installer auto`。之后可用
+`$destiny` 或 `/destiny`。参见
+[OpenClaw Skills 文档](https://docs.openclaw.ai/tools/skills)。
+
+Windows 将 `python3` 换成 `py -3`，启动器使用 `destiny.ps1` 或
+`destiny.cmd`。只有历史天文任务才给 bootstrap 加 `--research`；只有明确
+选择外部 provider 时才加 `--llm`。
+
+### Release、校验和与 provenance
+
+发布工作流只接受位于 `main` 历史、且所有版本元数据完全一致的 `v*` tag。
+发布前还必须由两个隔离源码副本产出逐字节一致的 wheel 与规范化 sdist。
+当 [v2.1.0 Release](https://github.com/harryhuang0719/Destiny/releases/tag/v2.1.0)
+实际出现后，页面应包含 wheel、sdist 与 `SHA256SUMS`；在此之前请使用源码
+安装，不要假设下面的资产已经存在。
 
 ```bash
-python3 /显示出来的路径/scripts/bootstrap.py --research
+gh release download v2.1.0 --repo harryhuang0719/Destiny
+sha256sum -c SHA256SUMS       # Linux
+# macOS: shasum -a 256 -c SHA256SUMS
+gh attestation verify destiny_agent_skill-2.1.0-py3-none-any.whl \
+  --repo harryhuang0719/Destiny
+python3 -m pip install ./destiny_agent_skill-2.1.0-py3-none-any.whl
 ```
 
-之后可用 `$destiny` 或 `/destiny`。参见 [OpenClaw Skills 官方文档](https://docs.openclaw.ai/tools/skills)。
-
-### 项目级安装
-
-希望团队把 Skill 跟项目一起版本化时：
-
-- Codex：克隆到项目的 `.agents/skills/destiny`；
-- Claude Code：克隆到项目的 `.claude/skills/destiny`；
-- OpenClaw：workspace 级使用默认 Git install；共享级加 `--global`。
+成功发布后，wheel 与 `destiny_agent_skill-2.1.0.tar.gz` 都应能通过
+GitHub/Sigstore build provenance 验证。
 
 ## 两条清清楚楚的流水线
 
@@ -379,7 +463,7 @@ hypothesis、registry 与 result 不能互相复用路径或 hard-link identity�
 | `PROSPECTIVE_DECLARED_UNVERIFIED` | 本地时间/Git 门禁通过的 prospective 声明；没有外部时间戳/公证，不能自我认证 |
 | `DESCRIPTIVE` | 周期/事件数不足，只能描述 |
 
-第一版故意不会打印 `CONFIRMATORY_PASS`。它当前只有预注册单变量检验，不含金融控制变量或 M0 对 M2 的 paired incremental model。真正强证据还需要完整 pipeline placebo、block/HAC inference、独立 Horizons golden、真实交易日历/early close、M0 对 M2 paired comparison、成本压力与未来 prospective 数据。详见 [历史研究方法](references/historical-research.md)。
+当前研究 MVP 故意不会打印 `CONFIRMATORY_PASS`。它只有预注册单变量检验，不含金融控制变量或 M0 对 M2 的 paired incremental model。真正强证据还需要完整 pipeline placebo、block/HAC inference、独立 Horizons golden、真实交易日历/early close、M0 对 M2 paired comparison、成本压力与未来 prospective 数据。详见 [历史研究方法](references/historical-research.md)。
 
 ## “支持”与“不冒充支持”
 
@@ -395,12 +479,15 @@ hypothesis、registry 与 result 不能互相复用路径或 hard-link identity�
 
 ## JSON 与退出码
 
-主输出使用 `schema_version: "2.0.0"`；历史研究使用独立 schema。结果包含引擎版本和计算口径，避免升级后静默改义。
+当前源码的 package/Skill version 是 `2.1.0`；只有 tag 工作流成功后，它才是
+已发布 release。源码版本也不等于数据协议版本：主输出仍使用
+`schema_version: "2.0.0"`，天文与历史研究 schema 仍为 `1.0.0`。结果包含
+引擎版本和计算口径，避免重构或升级后静默改义。
 
 | Exit code | 含义 |
 |---:|---|
 | `0` | 命令成功 |
-| `1` | Help/doctor 发现完整引擎尚未就绪 |
+| `1` | Help 或 doctor 选中的 profile 尚未就绪 |
 | `2` | 输入、配置或研究契约错误 |
 | `3` | 紫微 Node/iztro 引擎不可用 |
 | `130` | 用户中断 |
@@ -410,13 +497,13 @@ JSON 模式 stdout 只输出一个 JSON document；诊断去 stderr，便于 age
 ## 测试与复现
 
 ```bash
-python3 scripts/bootstrap.py --llm --research --dev
+python3 scripts/bootstrap.py --installer auto --llm --research --dev
 .venv/bin/python -m pytest -q
 npm test
 npm audit --omit=dev
 ```
 
-测试覆盖：
+当前基线收集 122+ 个回归与集成测试，覆盖：
 
 - 立春精确到秒的四柱切换；
 - 已知八字与男女大运；
@@ -437,19 +524,29 @@ CI 不调用真实 LLM，不提交或缓存私人数据。
 ```text
 Destiny/
 ├── SKILL.md                         # Claude / Codex / OpenClaw 共同入口
-├── README.md
+├── README.md / CHANGELOG.md
 ├── AGENTS.md / CLAUDE.md
 ├── destiny / destiny.cmd / destiny.ps1
 ├── scripts/
-│   ├── destiny_analyzer.py          # 统一命理 CLI
+│   ├── destiny_analyzer.py          # 向后兼容的统一 CLI 门面
+│   ├── cli_support.py               # 参数校验与通用 CLI helpers
+│   ├── llm_provider.py              # 可选 provider 传输边界
+│   ├── output_support.py            # JSON schema、解释与输出
 │   ├── calendar_engine.py
 │   ├── bazi_engine.py
 │   ├── ziwei_engine.py + ziwei_bridge.cjs
 │   ├── iching_engine.py
 │   ├── timezone_util.py
-│   ├── historical_research.py       # JPL features + point-in-time research
-│   ├── history_cli.py
-│   └── bootstrap.py
+│   ├── historical_research.py       # 向后兼容的研究 API 门面
+│   ├── research_common.py           # schema、I/O 与共享约束
+│   ├── research_ephemeris.py        # JPL/Skyfield 状态计算
+│   ├── research_features.py         # 连续天文特征
+│   ├── research_contracts.py        # catalog/hypothesis/target 契约
+│   ├── research_statistics.py       # split、placebo、maxT/BH
+│   ├── research_registry.py         # append-only trial registry
+│   ├── research_runner.py           # point-in-time 研究编排
+│   ├── history_cli.py               # 历史研究 CLI
+│   └── bootstrap.py                 # auto / uv / pip 安装器
 ├── references/                      # 方法、隐私、agent 与历史研究口径
 ├── docs/                            # 原始 Blueprint 与实现修正
 ├── examples/research/               # 无市场数据的 schema/config 模板
@@ -465,15 +562,16 @@ Destiny/
 ```bash
 node --version
 npm ci --ignore-scripts
-./destiny doctor --json
+./destiny doctor --all --json
 ```
 
-Node 需 18+。只用非紫微功能可重新 bootstrap `--skip-node`。
+Node 需 18+。只用非紫微功能可重新 bootstrap `--skip-node`；它不会清理
+已经存在的 `node_modules`。
 
 ### `skyfield` 未安装
 
 ```bash
-python3 scripts/bootstrap.py --research
+python3 scripts/bootstrap.py --installer auto --research
 ```
 
 Skyfield 只是研究 extra，不应拖进普通排盘环境。
